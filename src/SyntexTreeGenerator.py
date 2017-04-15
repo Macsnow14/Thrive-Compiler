@@ -2,8 +2,8 @@
 # @Author: Macsnow
 # @Date:   2017-04-12 20:40:35
 # @Last Modified by:   Macsnow
-# @Last Modified time: 2017-04-13 15:43:45
-from Exceptions import ParseError
+# @Last Modified time: 2017-04-15 13:28:59
+from .Exceptions import ParseError
 import json
 """this module is enlightened by zccz14's Visual-Compiler:
 [regexp.ts](https://github.com/zccz14/Visual-Compiler/blob/master/src/lib/regexp.ts)
@@ -41,6 +41,9 @@ class Expression(object):
     def __init__(self, expression):
         self.expression = expression
         self.ip = 0
+
+    def __repr__(self):
+        return self.expression
 
     def get(self):
         self.ip += 1
@@ -92,7 +95,7 @@ class NonTerminalSymbol_E(AST):
             if expression.judge() == ')':
                 self.child.append(TerminalSymbol(expression.get()))
             else:
-                raise ParseError('parse error: unexpect symbol \'%c\' in %d' % (expression.get(), expression.ip))
+                raise ParseError('parse error: unexpect symbol \'%s\' in %d' % (expression.judge(), expression.ip))
 
             self.child.append(NonTerminalSymbol_T().parse(expression))
 
@@ -102,7 +105,7 @@ class NonTerminalSymbol_E(AST):
             self.child.append(NonTerminalSymbol_T().parse(expression))
 
         else:
-            raise ParseError('parse error: unexpect symbol %s in %d' % (expression.get(), expression.ip))
+            raise ParseError('parse error: unexpect symbol \'%s\' in %d' % (expression.judge(), expression.ip))
 
         return self
 
@@ -130,7 +133,7 @@ class NonTerminalSymbol_F(AST):
             self.child.append(TerminalSymbol(expression.get()))
 
         else:
-            raise ParseError('parse error: unexpect symbol \'%c\' in %d' % (expression.get(), expression.ip))
+            raise ParseError('parse error: unexpect symbol \'%s\' in %d' % (expression.judge(), expression.ip))
 
         return self
 
@@ -167,6 +170,6 @@ class TerminalSymbol(AST):
 
 
 if __name__ == '__main__':
-    expression = Expression('1(1010*|1(010)*1)*0')
+    expression = Expression('1(0|1)*101')
     tree = NonTerminalSymbol_E().parse(expression)
     print(tree)

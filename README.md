@@ -17,6 +17,6 @@ Also a practice of Python3 language.
 
 ### enhancement
 
-[] Add travis CI surport.
+[] Add travis CI support.
 
 [] visualize.

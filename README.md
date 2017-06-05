@@ -12,14 +12,14 @@ Also a practice of Python3 language.
 
 - [x] Generate syntex tree form regular expressions.(enlightened by @zccz14: [Visual-Compiler](https://github.com/zccz14/Visual-Compiler))
 
-- [] Convert regular expressions to NFA.
+- [ ] Convert regular expressions to NFA.
 
-- [] Convert NFA to DFA.
+- [ ] Convert NFA to DFA.
 
-- [] Simplify DFA.
+- [ ] Simplify DFA.
 
 ### enhancement
 
-- [] Add travis CI uni test.
+- [ ] Add travis CI uni test.
 
-- [] visualize.
+- [ ] visualize.

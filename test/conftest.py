@@ -4,7 +4,7 @@
 # @Last Modified by:   Macsnow
 # @Last Modified time: 2017-04-15 13:31:37
 import pytest
-from src import SyntexTreeGenerator
+from src.util import SyntexTreeGenerator
 from .testConfig import expString
 
 

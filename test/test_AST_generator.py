@@ -4,7 +4,7 @@
 # @Last Modified by:   Macsnow
 # @Last Modified time: 2017-04-15 13:35:33
 import pytest
-from src import SyntexTreeGenerator
+from src.util import SyntexTreeGenerator
 from src import Exceptions
 
 

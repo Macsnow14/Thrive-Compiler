@@ -7,3 +7,10 @@
 
 class ParseError(Exception):
     pass
+
+
+class InvalidTokenException(Exception):
+    """
+    raise when detect an invalid token.
+    """
+    pass

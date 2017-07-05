@@ -1,7 +1,7 @@
 """
 this is a tool set for source code process.
 """
-from typing import Tuple
+from typing import Tuple, List, IO
 
 
 class Cursor(object):
@@ -34,26 +34,35 @@ class BaseSourceProcessor(object):
 class FileSourceProcessor(BaseSourceProcessor):
     """character peeker for files."""
 
-    def __init__(self, file_name):
+    def __init__(self, file_name: str):
         super(FileSourceProcessor, self).__init__()
-        self.file_obj = open(file_name, 'r')
-        self.cursor = Cursor(0, 0)
-        self.line_buffer = []
+        self.file_obj: IO = open(file_name, 'r')
+        self.cursor: Cursor = Cursor(0, 0)
+        self.line_buffer: List[str] = []
 
-    def pretreatment(self, string) -> str:
+    def pretreatment(self, string: str) -> str:
         """reduce redundant whitespace and return the str"""
+        string: str = string.replace('\t', '').replace('\r', '')
         return ' '.join([ch for ch in string.split(' ') if ch != ''])
 
     def reload_buffer(self):
         if self.line_buffer:
             self.line_buffer = list(self.pretreatment(self.file_obj.readline()))
 
-    def next_char(self) -> str:
+    def is_line_end(self, ch):
+        if ch == '\n':
+            return True
+        else:
+            return False
+
+    def next_char(self, peep=False) -> str:
         if self.line_buffer:
-            return self.line_buffer.pop(0)
+            self.cursor.col += 1 if not peep else 0
+            return self.line_buffer.pop(0) if not peep else self.line_buffer[0]
         else:
             self.reload_buffer()
             if self.line_buffer:
                 return "λ"
             else:
-                return self.line_buffer.pop(0)
+                self.cursor.line += 1 if not peep else 0
+                return self.line_buffer.pop(0) if not peep else self.line_buffer[0]

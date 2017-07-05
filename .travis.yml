@@ -1,13 +1,14 @@
 lauguage: python
 
-python:
-  - 3.6
+python: '3.6'
+dist: trusty
 
 sudo: required
  
 dist: trusty
 
 before_install:
+  - if [[ $TOXENV = py35 && -f ~/virtualenv/python3.5/bin/activate ]]; then source ~/virtualenv/python3.5/bin/activate; fi
   - export PYTHONPATH=/usr/lib/python3/dist-packages:/usr/local/lib/python3.6/dist-packages
   - sudo apt-get install python3-pip
 

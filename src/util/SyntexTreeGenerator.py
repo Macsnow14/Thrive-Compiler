@@ -1,3 +1,8 @@
+"""this module is enlightened by zccz14's Visual-Compiler:
+[regexp.ts](https://github.com/zccz14/Visual-Compiler/blob/master/src/lib/regexp.ts)
+
+To generate a AST from a given regular expression.
+"""
 # -*- coding: utf-8 -*-
 # @Author: Macsnow
 # @Date:   2017-04-12 20:40:35
@@ -5,11 +10,7 @@
 # @Last Modified time: 2017-06-05 14:57:51
 from src.exceptions import ParseError
 import json
-"""this module is enlightened by zccz14's Visual-Compiler:
-[regexp.ts](https://github.com/zccz14/Visual-Compiler/blob/master/src/lib/regexp.ts)
 
-To generate a AST from a given regular expression.
-"""
 
 
 NonCharSymbol = ('|', '*', '(', ')')

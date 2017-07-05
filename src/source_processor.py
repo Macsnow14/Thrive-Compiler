@@ -46,7 +46,7 @@ class FileSourceProcessor(BaseSourceProcessor):
         return ' '.join([ch for ch in string.split(' ') if ch != ''])
 
     def reload_buffer(self):
-        if self.line_buffer:
+        if not self.line_buffer:
             self.line_buffer = list(self.pretreatment(self.file_obj.readline()))
 
     def is_line_end(self, ch):
@@ -62,7 +62,11 @@ class FileSourceProcessor(BaseSourceProcessor):
         else:
             self.reload_buffer()
             if self.line_buffer:
-                return "λ"
-            else:
                 self.cursor.line += 1 if not peep else 0
                 return self.line_buffer.pop(0) if not peep else self.line_buffer[0]
+            else:
+                return -1
+"""
+TODO:
+    test cases.
+"""

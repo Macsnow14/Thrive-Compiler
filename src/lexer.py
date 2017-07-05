@@ -111,12 +111,14 @@ class Lexer(object):
         next_char = self.src_processor.next_char()
         self.read_buffer.append(next_char)
         token_literal: str = ''.join(self.read_buffer)
-        return self.create_token('OP', token_literal)
+        return self.create_token('DIM', token_literal)
 
     def match(self):
         """match engine"""
         while True:
             peep_next_char: str = self.src_processor.next_char(True)
+            if peep_next_char == -1:
+                break
             if peep_next_char.isalpha():
                 self.match_literal()
             elif peep_next_char.isdigit():
@@ -135,7 +137,12 @@ class Lexer(object):
 
 
 if __name__ == '__main__':
-    source_processor = FileSourceProcessor("")
+    source_processor = FileSourceProcessor("src/test.tl")
     lexer = Lexer(source_processor)
     lexer.match()
     print(lexer.token_list)
+
+"""
+TODO:
+    test cases.
+"""

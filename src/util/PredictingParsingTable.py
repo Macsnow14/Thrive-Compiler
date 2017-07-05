@@ -2,7 +2,7 @@
 module for generate predicting parsing table.
 """
 from collections import defaultdict
-from typing import List
+from typing import List, Dict, Set, Tuple
 import copy
 import json
 
@@ -12,46 +12,51 @@ class ParsingTableGenerator(object):
     class for generate predicting parsing table.
     """
 
-    def __init__(self, grammar: List[str], terminators: tuple, non_terminators: tuple):
-        self.p_list = self.convert_grammar(grammar)
-        self.terminators = terminators
-        self.non_terminators = non_terminators
-        self.first_dict = self.first_constructor()
-        self.follow_dict = self.follow_constructor()
+    def __init__(self, grammar: str, terminators: tuple, non_terminators: tuple):
+        self.p_list: List[Tuple[str, List[str]]
+                         ] = self.convert_grammar(grammar)
+        self.terminators: Tuple[str] = terminators
+        self.non_terminators: Tuple[str] = non_terminators
+        self.first_dict: Dict[str, Set[str]] = self.first_constructor()
+        self.follow_dict: Dict[str, Set[str]] = self.follow_constructor()
+        self.parsing_table: Dict[Tuple[str], Tuple[str, List[str]]] = None
 
-    def convert_grammar(self, grammar):
+    def convert_grammar(self, grammar: str) -> List[Tuple[str, List[str]]]:
         """convert grammar from string to tuple"""
-        self.p_list = list()
+        self.p_list: List[Tuple[str, List[str]]] = list()
         for production_rule in grammar:
-            production_rule = production_rule.replace(' ', '')
-            m_list = production_rule.split('->')
+            production_rule: str = production_rule.replace(' ', '')
+            m_list: List[str] = production_rule.split('->')
             self.p_list.append((m_list[0], list(m_list[1])))
         return self.p_list
 
-    def first_constructor(self):
+    def first_constructor(self) -> Dict[str, Set[str]]:
         """construct first set."""
-        first_dict = defaultdict(set)
+        first_dict: Dict[str, Set[str]] = defaultdict(set)
         for production_rule in self.p_list:
-            nonT = production_rule[0]
-            first_dict[nonT] = self.find_first(nonT)
+            non_terminator: str = production_rule[0]
+            first_dict[non_terminator]: Set[str] = self.find_first(
+                non_terminator)
         return first_dict
 
-    def find_first(self, symbol):
+    def find_first(self, symbol) -> Set[str]:
         """to find a non-terminator's first set."""
-        first_set = set()
+        first_set: Set[str] = set()
         if symbol not in self.non_terminators:
             first_set.add(symbol)
         else:
-            first_set |= set([production_rule[1][0] for production_rule in self.p_list if production_rule[0] == symbol and production_rule[1][0] not in self.non_terminators])
+            first_set |= set([production_rule[1][0] for production_rule in self.p_list if production_rule[0]
+                              == symbol and production_rule[1][0] not in self.non_terminators])
             for production_rule in self.p_list:
                 if production_rule[0] == symbol and production_rule[1][0] in self.non_terminators:
-                    first_set |= self.find_first(production_rule[1][0]) - set(('ε'))
+                    first_set |= self.find_first(
+                        production_rule[1][0]) - set(('ε'))
             first_set -= set([None])
         return first_set
 
-    def find_first_string(self, symbols):
+    def find_first_string(self, symbols) -> Set[str]:
         """to find a string of symbols first set."""
-        first_set = set()
+        first_set: Set[str] = set()
         for symbol in symbols:
             first_set |= self.find_first(symbol) - set(('ε'))
             if 'ε' not in self.find_first(symbol):
@@ -60,38 +65,43 @@ class ParsingTableGenerator(object):
                 first_set.add('ε')
         return first_set
 
-    def follow_constructor(self):
+    def follow_constructor(self) -> Dict[str, Set[str]]:
         """consturct follow set"""
-        follow_dict = defaultdict(set)
+        follow_dict: Dict[str, Set[str]] = defaultdict(set)
         for production_rule in self.p_list:
             if production_rule[0] is 'E':
                 follow_dict[production_rule[0]].add('#')
-            for i, v in enumerate(production_rule[1]):
-                if v in self.non_terminators and v is not production_rule[1][-1]:
-                    follow_dict[v] |= self.find_first(production_rule[1][i + 1]) - set(('ε'))
-            
+            for i, symbol in enumerate(production_rule[1]):
+                if symbol in self.non_terminators and symbol is not production_rule[1][-1]:
+                    follow_dict[symbol] |= self.find_first(
+                        production_rule[1][i + 1]) - set(('ε'))
+
         for production_rule in self.p_list:
-            for i, v in enumerate(production_rule[1]):
-                if v in self.non_terminators:
-                    if v is production_rule[1][-1]:
-                        follow_dict[v] |= follow_dict[production_rule[0]]
+            for i, symbol in enumerate(production_rule[1]):
+                if symbol in self.non_terminators:
+                    if symbol is production_rule[1][-1]:
+                        follow_dict[symbol] |= follow_dict[production_rule[0]]
                     else:
                         if 'ε' in self.find_first_string(production_rule[1][i + 1:]):
-                            follow_dict[v] |= follow_dict[production_rule[0]]
+                            follow_dict[symbol] |= follow_dict[production_rule[0]]
         return follow_dict
 
-    def table_constractor(self):
+    def table_constractor(self) -> Dict[Tuple[str], Tuple[str, List[str]]]:
         """construct predicting parsing table."""
-        self.parsing_table = defaultdict(tuple)
+        self.parsing_table: Dict[Tuple[str],
+                                 Tuple[str, List[str]]] = defaultdict(tuple)
         for production_rule in self.p_list:
             if 'ε' in self.find_first_string(production_rule[1]):
-                for v in self.follow_dict[production_rule[0]]:
-                    self.parsing_table[(production_rule[0], v)] = production_rule
+                for symbol in self.follow_dict[production_rule[0]]:
+                    self.parsing_table[(production_rule[0], symbol)
+                                       ]: Tuple[str, List[str]] = production_rule
                 if '#' in self.follow_dict[production_rule[0]]:
-                    self.parsing_table[(production_rule[0], '#')]
-            for v in terminators:
-                if v in self.find_first_string(production_rule[1]):
-                    self.parsing_table[(production_rule[0], v)] = production_rule
+                    self.parsing_table[(production_rule[0], '#')
+                                       ]: Tuple[str, List[str]] = production_rule
+            for symbol in terminators:
+                if symbol in self.find_first_string(production_rule[1]):
+                    self.parsing_table[(production_rule[0], symbol)
+                                       ]: Tuple[str, List[str]] = production_rule
         return self.parsing_table
 
 
@@ -147,7 +157,7 @@ class AST(object):
     def __init__(self, symbol):
         self.symbol = symbol
         self.child = list()
-        
+
     def __str__(self):
         return json.dumps(parseDict(self), indent=2)
 
@@ -164,7 +174,8 @@ if __name__ == '__main__':
     non_terminators = ('E', 'T', 'R')
     terminators = ('i', 'n', '(', ')', '+', '-')
 
-    parsingTableGenerator = ParsingTableGenerator(grammar, terminators, non_terminators)
+    parsingTableGenerator = ParsingTableGenerator(
+        grammar, terminators, non_terminators)
 
     parsing_table = parsingTableGenerator.table_constractor()
     print(parsingTableGenerator.p_list)
@@ -184,4 +195,4 @@ if __name__ == '__main__':
     ast_root = AST(p_seq[0][0])
     ASTGenerator(ast_root, p_seq, non_terminators)
 
-    print(parseDict(ast_root))
+    print(ast_root)

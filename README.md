@@ -12,12 +12,12 @@ Also a practice of Python3 language.
 
 - [x] Generate syntex tree form regular expressions.(enlightened by @zccz14: [Visual-Compiler](https://github.com/zccz14/Visual-Compiler))
 
-- [ ] Lexer
+- [x] Lexer
 
 - [ ] Parser
 
 ### enhancement
 
-- [ ] Add travis CI uni test.
+- [x] Add travis CI uni test.
 
 - [ ] visualize.

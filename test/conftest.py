@@ -5,7 +5,7 @@
 # @Last Modified time: 2017-04-15 13:31:37
 import pytest
 from src.util import SyntexTreeGenerator
-from .testConfig import expString
+from .testConfig import expString, grammar_str, non_terminators, terminators
 
 
 @pytest.fixture()
@@ -16,3 +16,9 @@ def expression(request):
     return {'fineExpressions': fineExpressions,
             'badExpressions': badExpressions
             }
+
+@pytest.fixture()
+def test_grammar(request):
+    return {'grammar': grammar_str,
+            'terminators': terminators,
+            'non_terminators': non_terminators}

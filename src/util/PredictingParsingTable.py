@@ -98,7 +98,7 @@ class ParsingTableGenerator(object):
                 if '#' in self.follow_dict[production_rule[0]]:
                     self.parsing_table[(production_rule[0], '#')
                                        ]: Tuple[str, List[str]] = production_rule
-            for symbol in terminators:
+            for symbol in self.terminators:
                 if symbol in self.find_first_string(production_rule[1]):
                     self.parsing_table[(production_rule[0], symbol)
                                        ]: Tuple[str, List[str]] = production_rule

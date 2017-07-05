@@ -10,3 +10,14 @@ expString = {'fineCases': ['1(0|1)*101',
                            ],
              'badCases': ['1(((1001*|10)*']
              }
+grammar_str = ('E -> TR',
+               'R -> +TR',
+               'R -> -TR',
+               'R -> ε',
+               'T -> (E)',
+               'T -> i',
+               'T -> n')
+
+non_terminators = ('E', 'T', 'R')
+terminators = ('i', 'n', '(', ')', '+', '-')
+

@@ -3,7 +3,7 @@
 # @Date:   2017-04-12 20:40:35
 # @Last Modified by:   Macsnow
 # @Last Modified time: 2017-06-05 14:57:51
-from src.Exceptions import ParseError
+from src.exceptions import ParseError
 import json
 """this module is enlightened by zccz14's Visual-Compiler:
 [regexp.ts](https://github.com/zccz14/Visual-Compiler/blob/master/src/lib/regexp.ts)

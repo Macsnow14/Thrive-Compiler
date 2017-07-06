@@ -42,7 +42,36 @@ class Lexer(object):
                     return self.create_token('KW' if token_literal in keywords else 'ID', token_literal)
             elif not next_char.isalpha() and not next_char.isdigit() and next_char != '_':
                 raise InvalidTokenException("illegal character %s appeared" % next_char)
+            elif next_char == -1:
+                raise InvalidTokenException("unexpected EOF")
             self.read_buffer.append(self.src_processor.next_char())
+
+    def match_character(self) -> str:
+        """match character elements"""
+        self.src_processor.next_char()
+        next_char: str = self.src_processor.next_char()
+        self.read_buffer.append(next_char)
+        if next_char == '\\':
+            next_char: str = self.src_processor.next_char()
+            self.read_buffer.append(next_char)
+        if next_char == '\'':
+            token_literal: str = ''.join(self.read_buffer)
+            return self.create_token('VAL', token_literal)
+        else:
+            raise InvalidTokenException("character must be quote in apostrophes.")
+
+    def match_string(self) -> str:
+        """match char array elements"""
+        self.src_processor.next_char()
+        while True:
+            next_char: str = self.src_processor.next_char()
+            if next_char =='\"':
+                token_literal: str = ''.join(self.read_buffer)
+                return self.create_token('VAL', token_literal)
+            elif self.src_processor.is_line_end(next_char):
+                raise InvalidTokenException("unclosed quote")
+            elif next_char == -1:
+                raise InvalidTokenException("unexpected EOF")
 
     def match_digit(self) -> int:
         """match digit element"""
@@ -56,6 +85,8 @@ class Lexer(object):
                 return self.create_token('VAL', token_literal)
             elif not next_char.isdigit():
                 raise InvalidTokenException("illegal character %s appeared" % next_char)
+            elif next_char == -1:
+                raise InvalidTokenException("unexpected EOF")
             self.read_buffer.append(self.src_processor.next_char())
 
     def match_float(self) -> float:
@@ -67,13 +98,15 @@ class Lexer(object):
                 return self.create_token('VAL', token_literal)
             elif not next_char.isdigit():
                 raise InvalidTokenException("illegal character %s appeared" % next_char)
+            elif next_char == -1:
+                raise InvalidTokenException("unexpected EOF")
             self.read_buffer.append(self.src_processor.next_char())
 
     def match_line_comment(self) -> None:
         """match line comment element"""
         while True:
             next_char = self.src_processor.next_char()
-            if self.src_processor.is_line_end(next_char):
+            if self.src_processor.is_line_end(next_char) or next_char == -1:
                 return
             self.read_buffer.append(next_char)
 
@@ -82,29 +115,31 @@ class Lexer(object):
         next_char = self.src_processor.next_char()
         self.read_buffer.append(next_char)
         if next_char == '+':
-            self._peep_next_op('+')
+            self._peep_next_tk('+')
         elif next_char == '-':
-            self._peep_next_op('-')
+            self._peep_next_tk('-')
         elif next_char == '=':
-            self._peep_next_op('=')
+            self._peep_next_tk('=')
         elif next_char == '!':
-            self._peep_next_op('=')
+            self._peep_next_tk('=')
         elif next_char == '>':
-            self._peep_next_op('=')
+            self._peep_next_tk('=')
         elif next_char == '<':
-            self._peep_next_op('=')
+            self._peep_next_tk('=')
         elif next_char == '&':
-            self._peep_next_op('&')
+            self._peep_next_tk('&')
         elif next_char == '|':
-            self._peep_next_op('|')
+            self._peep_next_tk('|')
         token_literal: str = ''.join(self.read_buffer)
         return self.create_token('OP', token_literal)
 
-    def _peep_next_op(self, operator):
-        """to see if a operator is binocular operator."""
-        if self.src_processor.next_char(True) == operator:
+    def _peep_next_tk(self, token, harsh=False):
+        """to see if a token is binocular operator."""
+        if self.src_processor.next_char(True) == token:
             next_char = self.src_processor.next_char()
             self.read_buffer.append(next_char)
+        elif harsh:
+            raise InvalidTokenException("token %s invalid" % (token))
 
     def match_delimiters(self):
         """match delimiter elements"""

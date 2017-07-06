@@ -2,10 +2,7 @@ lauguage: python
 
 python: '3.6'
 dist: trusty
-
 sudo: required
- 
-dist: trusty
 
 before_install:
   - if [[ $TOXENV = py35 && -f ~/virtualenv/python3.5/bin/activate ]]; then source ~/virtualenv/python3.5/bin/activate; fi

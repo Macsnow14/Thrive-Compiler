@@ -26,7 +26,13 @@ class BaseSourceProcessor(object):
         """pretreatment the source code"""
         raise NotImplementedError
 
-    def next_char(self) -> str:
+    def is_line_end(self, ch):
+        if ch == '\n':
+            return True
+        else:
+            return False
+
+    def next_char(self, peep=False) -> str:
         """return next char to process"""
         raise NotImplementedError
 
@@ -49,12 +55,6 @@ class FileSourceProcessor(BaseSourceProcessor):
         if not self.line_buffer:
             self.line_buffer = list(self.pretreatment(self.file_obj.readline()))
 
-    def is_line_end(self, ch):
-        if ch == '\n':
-            return True
-        else:
-            return False
-
     def next_char(self, peep=False) -> str:
         if self.line_buffer:
             self.cursor.col += 1 if not peep else 0
@@ -66,7 +66,25 @@ class FileSourceProcessor(BaseSourceProcessor):
                 return self.line_buffer.pop(0) if not peep else self.line_buffer[0]
             else:
                 return -1
-"""
-TODO:
-    test cases.
-"""
+
+
+class StringSourceProcessor(BaseSourceProcessor):
+    """character peeker for files."""
+
+    def __init__(self, string_source: str):
+        super(StringSourceProcessor, self).__init__()
+        self.cursor: Cursor = Cursor(0, 0)
+        self.buffer: List[str] = list(self.pretreatment(string_source))
+
+    def pretreatment(self, string: str) -> str:
+        """reduce redundant whitespace and return the str"""
+        string: str = string.replace('\t', '').replace('\r', '')
+        return ' '.join([ch for ch in string.split(' ') if ch != ''])
+
+    def next_char(self, peep=False):
+        if self.buffer:
+            self.cursor.col += 1 if not peep else 0
+            self.cursor.line += 1 if not peep and self.buffer[0] == '\n' else 0
+            return self.buffer.pop(0) if not peep else self.buffer[0]
+        else:
+            return -1

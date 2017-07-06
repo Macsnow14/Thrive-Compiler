@@ -3,7 +3,7 @@ Lexer generate tokens for parsing.
 """
 from typing import List
 from src.token import Token
-from src.source_processor import BaseSourceProcessor, FileSourceProcessor
+from src.source_processor import BaseSourceProcessor
 from src.exceptions import InvalidTokenException
 
 
@@ -134,15 +134,3 @@ class Lexer(object):
             else:
                 raise InvalidTokenException
             self.read_buffer = []
-
-
-if __name__ == '__main__':
-    source_processor = FileSourceProcessor("src/test.tl")
-    lexer = Lexer(source_processor)
-    lexer.match()
-    print(lexer.token_list)
-
-"""
-TODO:
-    test cases.
-"""

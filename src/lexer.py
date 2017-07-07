@@ -3,7 +3,7 @@ Lexer generate tokens for parsing.
 """
 from typing import List
 from src.token import Token
-from src.source_processor import BaseSourceProcessor
+from src.source import BaseSource
 from src.exceptions import InvalidTokenException
 
 
@@ -17,22 +17,22 @@ operators = ("+", "-", "*", "/", "<", "=", ">", "&", "|", "!")
 class Lexer(object):
     """Lexical analyzer to generate token from source code."""
 
-    def __init__(self, file_source_processor: BaseSourceProcessor):
+    def __init__(self, file_source: BaseSource):
         self.read_buffer: List[str] = []
         self.token_list: List[Token] = []
-        self.src_processor: BaseSourceProcessor = file_source_processor
+        self.src: BaseSource = file_source
 
     def create_token(self, t_type: str, token_literal: str) -> Token:
         """create token from string"""
-        token: Token = Token(t_type, token_literal, self.src_processor)
+        token: Token = Token(t_type, token_literal, self.src)
         self.token_list.append(token)
         return token
 
     def match_literal(self) -> str:
         """match literal elements(identifier, keyword, true and false value)"""
         while True:
-            next_char: str = self.src_processor.next_char(True)
-            if next_char == ' ' or self.src_processor.is_line_end(next_char) or next_char in delimiters:
+            next_char: str = self.src.next_char(True)
+            if next_char == ' ' or self.src.is_line_end(next_char) or next_char in delimiters:
                 token_literal: str = ''.join(self.read_buffer)
                 if token_literal == 'true':
                     return self.create_token('VAL', True)
@@ -44,15 +44,15 @@ class Lexer(object):
                 raise InvalidTokenException("illegal character %s appeared" % next_char)
             elif next_char == -1:
                 raise InvalidTokenException("unexpected EOF")
-            self.read_buffer.append(self.src_processor.next_char())
+            self.read_buffer.append(self.src.next_char())
 
     def match_character(self) -> str:
         """match character elements"""
-        self.src_processor.next_char()
-        next_char: str = self.src_processor.next_char()
+        self.src.next_char()
+        next_char: str = self.src.next_char()
         self.read_buffer.append(next_char)
         if next_char == '\\':
-            next_char: str = self.src_processor.next_char()
+            next_char: str = self.src.next_char()
             self.read_buffer.append(next_char)
         if next_char == '\'':
             token_literal: str = ''.join(self.read_buffer)
@@ -62,13 +62,13 @@ class Lexer(object):
 
     def match_string(self) -> str:
         """match char array elements"""
-        self.src_processor.next_char()
+        self.src.next_char()
         while True:
-            next_char: str = self.src_processor.next_char()
+            next_char: str = self.src.next_char()
             if next_char =='\"':
                 token_literal: str = ''.join(self.read_buffer)
                 return self.create_token('VAL', token_literal)
-            elif self.src_processor.is_line_end(next_char):
+            elif self.src.is_line_end(next_char):
                 raise InvalidTokenException("unclosed quote")
             elif next_char == -1:
                 raise InvalidTokenException("unexpected EOF")
@@ -76,43 +76,43 @@ class Lexer(object):
     def match_digit(self) -> int:
         """match digit element"""
         while True:
-            next_char: str = self.src_processor.next_char(True)
+            next_char: str = self.src.next_char(True)
             if next_char == '.':
                 self.read_buffer.append(next_char)
                 return self.match_float()
-            elif next_char == ' ' or self.src_processor.is_line_end(next_char) or next_char in delimiters:
+            elif next_char == ' ' or self.src.is_line_end(next_char) or next_char in delimiters:
                 token_literal: str = ''.join(self.read_buffer)
                 return self.create_token('VAL', token_literal)
             elif not next_char.isdigit():
                 raise InvalidTokenException("illegal character %s appeared" % next_char)
             elif next_char == -1:
                 raise InvalidTokenException("unexpected EOF")
-            self.read_buffer.append(self.src_processor.next_char())
+            self.read_buffer.append(self.src.next_char())
 
     def match_float(self) -> float:
         """match float element"""
         while True:
-            next_char = self.src_processor.next_char(True)
-            if next_char == ' ' or self.src_processor.is_line_end(next_char) or next_char in delimiters:
+            next_char = self.src.next_char(True)
+            if next_char == ' ' or self.src.is_line_end(next_char) or next_char in delimiters:
                 token_literal: str = ''.join(self.read_buffer)
                 return self.create_token('VAL', token_literal)
             elif not next_char.isdigit():
                 raise InvalidTokenException("illegal character %s appeared" % next_char)
             elif next_char == -1:
                 raise InvalidTokenException("unexpected EOF")
-            self.read_buffer.append(self.src_processor.next_char())
+            self.read_buffer.append(self.src.next_char())
 
     def match_line_comment(self) -> None:
         """match line comment element"""
         while True:
-            next_char = self.src_processor.next_char()
-            if self.src_processor.is_line_end(next_char) or next_char == -1:
+            next_char = self.src.next_char()
+            if self.src.is_line_end(next_char) or next_char == -1:
                 return
             self.read_buffer.append(next_char)
 
     def match_operator(self) -> str:
         """match operator element"""
-        next_char = self.src_processor.next_char()
+        next_char = self.src.next_char()
         self.read_buffer.append(next_char)
         if next_char == '+':
             self._peep_next_tk('+')
@@ -135,15 +135,15 @@ class Lexer(object):
 
     def _peep_next_tk(self, token, harsh=False):
         """to see if a token is binocular operator."""
-        if self.src_processor.next_char(True) == token:
-            next_char = self.src_processor.next_char()
+        if self.src.next_char(True) == token:
+            next_char = self.src.next_char()
             self.read_buffer.append(next_char)
         elif harsh:
             raise InvalidTokenException("token %s invalid" % (token))
 
     def match_delimiters(self):
         """match delimiter elements"""
-        next_char = self.src_processor.next_char()
+        next_char = self.src.next_char()
         self.read_buffer.append(next_char)
         token_literal: str = ''.join(self.read_buffer)
         return self.create_token('DIM', token_literal)
@@ -151,7 +151,7 @@ class Lexer(object):
     def match(self):
         """match engine"""
         while True:
-            peep_next_char: str = self.src_processor.next_char(True)
+            peep_next_char: str = self.src.next_char(True)
             if peep_next_char == -1:
                 break
             if peep_next_char.isalpha():
@@ -164,8 +164,8 @@ class Lexer(object):
                 self.match_operator()
             elif peep_next_char in delimiters:
                 self.match_delimiters()
-            elif self.src_processor.is_line_end(peep_next_char) or peep_next_char == ' ':
-                self.src_processor.next_char()
+            elif self.src.is_line_end(peep_next_char) or peep_next_char == ' ':
+                self.src.next_char()
             else:
                 raise InvalidTokenException
             self.read_buffer = []

@@ -1,7 +1,7 @@
 """test case for lexer"""
 import pytest
 from src.lexer import Lexer
-from src.source_processor import FileSourceProcessor, StringSourceProcessor
+from src.source import FileSource, StringSource
 
 class TestLexer:
     """
@@ -14,13 +14,13 @@ class TestLexer:
             print(file_obj.read)
 
     def test_file_lexical_analysis(self, test_source_file):
-        source_processor = FileSourceProcessor(test_source_file)
-        lexer = Lexer(source_processor)
+        source = FileSource(test_source_file)
+        lexer = Lexer(source)
         lexer.match()
         print(lexer.token_list)
 
     def test_string_lexical_analysis(self, test_source_string):
-        source_processor = StringSourceProcessor(test_source_string)
-        lexer = Lexer(source_processor)
+        source = StringSource(test_source_string)
+        lexer = Lexer(source)
         lexer.match()
         print(lexer.token_list)

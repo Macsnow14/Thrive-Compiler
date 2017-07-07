@@ -16,7 +16,7 @@ class Cursor(object):
         return self.line, self.col
 
 
-class BaseSourceProcessor(object):
+class BaseSource(object):
     """character peeker."""
 
     def __init__(self):
@@ -27,6 +27,7 @@ class BaseSourceProcessor(object):
         raise NotImplementedError
 
     def is_line_end(self, ch):
+        """check if given character is line end symbol"""
         if ch == '\n':
             return True
         else:
@@ -37,11 +38,11 @@ class BaseSourceProcessor(object):
         raise NotImplementedError
 
 
-class FileSourceProcessor(BaseSourceProcessor):
+class FileSource(BaseSource):
     """character peeker for files."""
 
     def __init__(self, file_name: str):
-        super(FileSourceProcessor, self).__init__()
+        super(FileSource, self).__init__()
         self.file_obj: IO = open(file_name, 'r')
         self.cursor: Cursor = Cursor(0, 0)
         self.line_buffer: List[str] = []
@@ -68,11 +69,11 @@ class FileSourceProcessor(BaseSourceProcessor):
                 return -1
 
 
-class StringSourceProcessor(BaseSourceProcessor):
+class StringSource(BaseSource):
     """character peeker for files."""
 
     def __init__(self, string_source: str):
-        super(StringSourceProcessor, self).__init__()
+        super(StringSource, self).__init__()
         self.cursor: Cursor = Cursor(0, 0)
         self.buffer: List[str] = list(self.pretreatment(string_source))
 

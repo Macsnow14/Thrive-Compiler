@@ -33,7 +33,7 @@ class BaseSource(object):
         else:
             return False
 
-    def next_char(self, peep=False) -> str:
+    def next_char(self, peek=False) -> str:
         """return next char to process"""
         raise NotImplementedError
 
@@ -56,15 +56,15 @@ class FileSource(BaseSource):
         if not self.line_buffer:
             self.line_buffer = list(self.pretreatment(self.file_obj.readline()))
 
-    def next_char(self, peep=False) -> str:
+    def next_char(self, peek=False) -> str:
         if self.line_buffer:
-            self.cursor.col += 1 if not peep else 0
-            return self.line_buffer.pop(0) if not peep else self.line_buffer[0]
+            self.cursor.col += 1 if not peek else 0
+            return self.line_buffer.pop(0) if not peek else self.line_buffer[0]
         else:
             self.reload_buffer()
             if self.line_buffer:
-                self.cursor.line += 1 if not peep else 0
-                return self.line_buffer.pop(0) if not peep else self.line_buffer[0]
+                self.cursor.line += 1 if not peek else 0
+                return self.line_buffer.pop(0) if not peek else self.line_buffer[0]
             else:
                 return -1
 
@@ -82,10 +82,10 @@ class StringSource(BaseSource):
         string: str = string.replace('\t', '').replace('\r', '')
         return ' '.join([ch for ch in string.split(' ') if ch != ''])
 
-    def next_char(self, peep=False):
+    def next_char(self, peek=False):
         if self.buffer:
-            self.cursor.col += 1 if not peep else 0
-            self.cursor.line += 1 if not peep and self.buffer[0] == '\n' else 0
-            return self.buffer.pop(0) if not peep else self.buffer[0]
+            self.cursor.col += 1 if not peek else 0
+            self.cursor.line += 1 if not peek and self.buffer[0] == '\n' else 0
+            return self.buffer.pop(0) if not peek else self.buffer[0]
         else:
             return -1

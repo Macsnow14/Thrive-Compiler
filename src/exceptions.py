@@ -5,12 +5,15 @@
 # @Last Modified time: 2017-04-12 23:05:01
 
 
-class ParseError(Exception):
+class ParseException(Exception):
+    """
+    raise when detect an invalid token.
+    """
     pass
 
 
 class InvalidTokenException(Exception):
     """
-    raise when detect an invalid token.
+    raise when detect an invalid symbol.
     """
     pass

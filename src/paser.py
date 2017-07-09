@@ -4,16 +4,20 @@ paser to generate quaternary.
 Recursive descent parsing.
 """
 import json
-from typing import List
+from typing import List, Set
+from functools import wraps
 from .token import Token
+from .lexer import var_types
+from .exceptions import ParseException
+# TODO: add judgement static method to each class.
 
 
-def parseDict(AST):
+def parse_dict(parseNode):
     """
     parse AST to dict obj.
     """
-    return {'symbol': AST.token,
-            'child': [parseDict(node) for node in AST.child if AST.child]}
+    return {'symbol': parseNode.token,
+            'child': [parse_dict(node) for node in parseNode.child if parseNode.child]}
 
 
 class ParseNode(object):
@@ -23,13 +27,24 @@ class ParseNode(object):
 
     def __init__(self, token: Token):
         self.token: Token = token
-        self.child: List[Token] = list()
+        self.child: List[ParseNode] = list()
 
+    @classmethod
     def parse(self, token_source):
         raise NotImplementedError
 
     def __str__(self):
-        return json.dumps(parseDict(self), indent=2)
+        return json.dumps(parse_dict(self), indent=2)
+
+
+class ParseToken(ParseNode):
+    """
+    Token as the terminator.
+    """
+
+    @classmethod
+    def parse(cls, token_source):
+        return cls(token_source.get())
 
 
 class ParsetranslationUnit(ParseNode):
@@ -47,75 +62,94 @@ class ParsetranslationUnit(ParseNode):
     the origin symbol.
     """
 
-    def __init__(self):
-        super(ParsetranslationUnit, self).__init__('translation Unit')
+    @classmethod
+    def parse(cls, token_source):
+        node = cls('translation Unit')
 
-    def parse(self, token_source):
-        if token_source.judge():
-            pass
+        node.child.append(ParseExternalDecl.parse(token_source))
+        while token_source.peek(1).type == 'KW' and token_source.peek(1) in var_types:
+            node.child.append(ParseExternalDecl.parse(token_source))
+
+        return node
 
 
 class ParseExternalDecl(ParseNode):
     """
     BNF:
-    external_decl       : function_definition
-                        | decl
+    external_decl       : type_spec function_definition
+                        | type_spec init_declarator_list ';'
                         ;
     EBNF:
-    external_decl       : function_definition
-                        | decl
+    external_decl       : type_spec ( function_definition | init_declarator_list ';')
                         ;
 
     parse external declaration.
     """
+    @classmethod
+    def parse(cls, token_source):
+        node = cls('external declaration')
 
-    def __init__(self):
-        super(ParseExternalDecl, self).__init__('external declaration')
+        node.child.append(ParseTypeSpec.parse(token_source.get()))
+        if token_source.peek(1).type == 'ID':
+            if token_source.peek(1).value == (';' or '[' or ','):
+                node.child.append(
+                    ParseInitDeclaratorList.parse(token_source))
+            elif token_source.peek(1).value == '(':
+                node.child.append(
+                    ParseFunctionDefinition.parse(token_source))
+            else:
+                raise ParseException("%s cannot be a external declare." % (
+                    token_source.peek(1).value))
 
-    def parse(self, token_source):
-        pass
+        return node
 
 
 class ParseFunctionDefinition(ParseNode):
     """
     BNF:
-    function_definition : decl_specs declarator decl_list compound_stat
-                        |		declarator decl_list compound_stat
-                        | decl_specs declarator		compound_stat
-                        |		declarator 	compound_stat
+    function_definition : declarator compound_stat
                         ;
     EBNF:
-    function_definition : [ decl_specs ] declarator [ decl_list ] compound_stat
+    function_definition : declarator compound_stat
                         ;
 
     parse function definition.
     """
 
-    def __init__(self):
-        super(ParseFunctionDefinition, self).__init__('function definition')
+    @classmethod
+    def parse(cls, token_source):
+        node = cls('function definition')
 
-    def parse(self, token_source):
-        pass
+        node.child.append(ParseDeclarator.parse(token_source))
+        node.child.append(ParseCompoundStat.parse(token_source))
+
+        return node
 
 
 class ParseDecl(ParseNode):
     """
     BNF:
-    decl		        : decl_specs init_declarator_list ';'
-                        | decl_specs			';'
+    decl		        : type_spec init_declarator_list ';'
                         ;
     EBNF:
-    decl		        : decl_specs [ init_declarator_list ] ';'
+    decl		        : type_spec init_declarator_list ';'
                         ;
 
     parse declaration.
     """
 
-    def __init__(self):
-        super(ParseDecl, self).__init__('declaration')
+    @classmethod
+    def parse(cls, token_source):
+        node = cls('declaration')
 
-    def parse(self, token_source):
-        pass
+        node.child.append(ParseTypeSpec.parse(token_source.get()))
+        node.child.append(ParseInitDeclaratorList.parse(token_source))
+        if token_source.peek(1).value == ';':
+            node.child.append(ParseToken.parse(token_source))
+        else:
+            raise ParseException("declaration must end up with ';'.")
+
+        return node
 
 
 class ParseDeclList(ParseNode):
@@ -131,31 +165,15 @@ class ParseDeclList(ParseNode):
     parse declaration list.
     """
 
-    def __init__(self):
-        super(ParseDeclList, self).__init__("declaration list")
+    @classmethod
+    def parse(cls, token_source):
+        node = cls("declaration list")
 
-    def parse(self, token_source):
-        pass
+        node.child.append(ParseDecl.parse(token_source))
+        while token_source.peek(1).value in var_types:
+            node.child.append(ParseDecl.parse(token_source))
 
-
-class ParseDeclSpecs(ParseNode):
-    """
-    BNF:
-    decl_specs		        : type_spec decl_specs
-                            | type_spec
-                            ;
-    EBNF:
-    decl_specs		        : type_spec { type_spec }
-                            ;
-
-    parse declaration specs.
-    """
-
-    def __init__(self):
-        super(ParseDeclSpecs, self).__init__("declaration specs")
-
-    def parse(self, token_source):
-        pass
+        return node
 
 
 class ParseTypeSpec(ParseNode):
@@ -170,31 +188,37 @@ class ParseTypeSpec(ParseNode):
     parse type spec.
     """
 
-    def __init__(self):
-        super(ParseTypeSpec, self).__init__("type spec")
-
-    def parse(self, token_source):
-        pass
+    @classmethod
+    def parse(cls, token_source):
+        if token_source.peek(1).value in var_types:
+            return cls(token_source.get())
+        else:
+            raise ParseException('expect var type')
 
 
 class ParseInitDeclaratorList(ParseNode):
     """
     BNF:
     init_declarator_list    : init_declarator
-    			            | init_declarator_list ',' init_declarator
-    			            ;
+                            | init_declarator_list ',' init_declarator
+                            ;
     EBNF:
     init_declarator_list    : init_declarator { ',' init_declarator }
-    			            ;
+                            ;
 
     parse init declarator list.
     """
 
-    def __init__(self):
-        super(ParseInitDeclaratorList, self).__init__("init declarator list")
+    @classmethod
+    def parse(cls, token_source):
+        node = cls("init declarator list")
 
-    def parse(self, token_source):
-        pass
+        node.child.append(ParseInitDeclarator.parse(token_source))
+        while token_source.peek(1).value == ',':
+            node.child.append(ParseNode(token_source.get()))
+            node.child.append(ParseInitDeclarator.parse(token_source))
+
+        return node
 
 
 class ParseInitDeclarator(ParseNode):
@@ -210,31 +234,16 @@ class ParseInitDeclarator(ParseNode):
     parse init declarator.
     """
 
-    def __init__(self):
-        super(ParseInitDeclarator, self).__init__("init declarator")
+    @classmethod
+    def parse(cls, token_source):
+        node = cls("init declarator")
 
-    def parse(self, token_source):
-        pass
+        node.child.append(ParseDeclarator.parse(token_source))
+        if token_source.peek(1).value == '=':
+            node.child.append(ParseToken.parse(token_source))
+            node.child.append(ParseInitializer.parse(token_source))
 
-
-class ParseSpecQualifierList(ParseNode):
-    """
-    BNF:
-    spec_qualifier_list     : type_spec spec_qualifier_list
-                            | type_spec
-                            ;
-    EBNF:
-    spec_qualifier_list     : type_spec { type_spec }
-                            ;
-
-    parse spec qualifier list.
-    """
-
-    def __init__(self):
-        super(ParseSpecQualifierList, self).__init__("spec qualifier list")
-
-    def parse(self, token_source):
-        pass
+        return node
 
 
 class ParseDeclarator(ParseNode):
@@ -248,21 +257,40 @@ class ParseDeclarator(ParseNode):
                             | declarator '('		')'
                             ;
     EBNF:
-    declarator              : id { '[' logical_or_exp ']' }
-                            | id { '['		']' }
-                            | id { '(' param_list ')' }
-                            | id { '(' id_list ')' }
-                            | id { '('		')' }
+    declarator              : id { '[' [ logical_or_exp ] ']' |  '(' [ param_list ] ')' | '(' [ id_list ] ')' }
                             ;
 
     parse declarator.
     """
+    # FIXME: EBNF is wrong.
 
-    def __init__(self):
-        super(ParseDeclarator, self).__init__("declarator")
+    @classmethod
+    def parse(cls, token_source):
+        node = cls("declarator")
 
-    def parse(self, token_source):
-        pass
+        if token_source.peek(1).type == 'ID':
+            node.child.append(ParseToken.parse(token_source))
+            while token_source.peek(1).value in ('[', '('):
+                if token_source.peek(1).value == '[':
+                    node.child.append(ParseToken.parse(token_source))
+                    if token_source.peek(1).type in ('ID', 'VAL') or token_source.peek(1).value in ('(', '+', '-', '!', '++', '--'):
+                        node.child.append(ParseLogicalOrExp.parse(token_source))
+                    if token_source.peek(1).value == ']':
+                        node.child.append(ParseToken.parse(token_source))
+                    else:
+                        raise ParseException("expect ']'")
+                elif token_source.peek(1).value == '(':
+                    node.child.append(ParseToken.parse(token_source))
+                    if token_source.peek(1).value in var_types:
+                        node.child.append(ParseToken.parse(token_source))
+                    elif token_source.peek(1).type == 'ID':
+                        node.child.append(ParseToken.parse(token_source))
+                    if token_source.peek(1).value == ')':
+                        node.child.append(ParseToken.parse(token_source))
+                    else:
+                        raise ParseException("expect ')'")
+        else:
+            raise ParseException("expect ID.")
 
 
 class ParseParamList(ParseNode):
@@ -278,31 +306,40 @@ class ParseParamList(ParseNode):
     parse param list.
     """
 
-    def __init__(self):
-        super(ParseParamList, self).__init__("param list")
+    @classmethod
+    def parse(cls, token_source):
+        node = cls("param list")
 
-    def parse(self, token_source):
-        pass
+        node.child.append(ParseParamDecl.parse(token_source))
+        while token_source.peek(1).value == ',':
+            node.child.append(ParseToken.parse(token_source))
+            node.child.append(ParseParamDecl.parse(token_source))
+
+        return node
 
 
 class ParseParamDecl(ParseNode):
     """
     BNF:
-    param_decl              : decl_specs declarator
-                            | decl_specs
+    param_decl              : type_spec declarator
+                            | type_spec
                             ;
     EBNF:
-    param_decl              : decl_specs { declarator }
+    param_decl              : type_spec { declarator }
                             ;
 
     parse param decl.
     """
 
-    def __init__(self):
-        super(ParseParamDecl, self).__init__("param decl")
+    @classmethod
+    def parse(cls, token_source):
+        node = cls("param decl")
 
-    def parse(self, token_source):
-        pass
+        node.child.append(ParseToken.parse(token_source))
+        while token_source.peek(1).value in var_types:
+            node.child.append(ParseDeclarator.parse(token_source))
+
+        return node
 
 
 class ParseIdList(ParseNode):
@@ -318,11 +355,22 @@ class ParseIdList(ParseNode):
     parse Id list.
     """
 
-    def __init__(self):
-        super(ParseIdList, self).__init__("Id list")
+    @classmethod
+    def parse(cls, token_source):
+        node = cls("Id list")
 
-    def parse(self, token_source):
-        pass
+        if token_source.peek(1).type == 'ID':
+            node.child.append(ParseToken.parse(token_source))
+            while token_source.peek(1).value == ',':
+                node.child.append(ParseToken.parse(token_source))
+                if token_source.peek(1).type == 'ID':
+                    node.child.append(ParseToken.parse(token_source))
+                else:
+                    raise ParseException("expect ID")
+        else:
+            raise ParseException("expect ID")
+
+        return node
 
 
 class ParseInitializer(ParseNode):
@@ -339,11 +387,21 @@ class ParseInitializer(ParseNode):
     parse initializer.
     """
 
-    def __init__(self):
-        super(ParseInitializer, self).__init__("initializer")
+    @classmethod
+    def parse(cls, token_source):
+        node = cls("initializer")
 
-    def parse(self, token_source):
-        pass
+        if token_source.peek(1).value == '{':
+            node.child.append(ParseToken.parse(token_source))
+            node.child.append(ParseInitDeclaratorList.parse(token_source))
+            if token_source.peek(1).value == ',':
+                node.child.append(ParseToken.parse(token_source))
+            if token_source.peek(1).value == '}':
+                node.child.append(ParseToken.parse(token_source))
+        else:
+            node.child.append(ParseAssignmentExp.parse(token_source))
+
+        return node
 
 
 class ParseInitializerList(ParseNode):
@@ -358,11 +416,16 @@ class ParseInitializerList(ParseNode):
     parse initializer list.
     """
 
-    def __init__(self):
-        super(ParseInitializerList, self).__init__("initializer list")
+    @classmethod
+    def parse(cls, token_source):
+        node = cls("initializer list")
 
-    def parse(self, token_source):
-        pass
+        node.child.append(ParseInitializer.parse(token_source))
+        while token_source.peek(1).value == ',':
+            node.child.append(ParseToken.parse(token_source))
+            node.child.append(ParseInitializer.parse(token_source))
+
+        return node
 
 
 class ParseStatement(ParseNode):
@@ -385,12 +448,54 @@ class ParseStatement(ParseNode):
                             ;
     parse statement.
     """
+    @staticmethod
+    def is_stat(token_source):
+        return ParseStatement.is_labeled_stat(token_source) or ParseStatement.is_exp_stat(token_source) or ParseStatement.is_compound_stat(token_source) or ParseStatement.is_selection_stat(token_source) or ParseStatement.is_iteration_stat(token_source) or ParseStatement.is_jump_stat(token_source)
 
-    def __init__(self):
-        super(ParseStatement, self).__init__("statement")
+    @staticmethod
+    def is_labeled_stat(token_source):
+        return token_source.peek(2).value == ':' or token_source.peek(1).value == 'case' or token_source.peek(1).value == 'default'
 
-    def parse(self, token_source):
-        pass
+    @staticmethod
+    def is_exp_stat(token_source):
+        return token_source.peek(1).type in ('ID', 'VAL') or token_source.peek(1).value in ('(', '+', '-', '!', '++', '--', ';')
+
+    @staticmethod
+    def is_compound_stat(token_source):
+        return token_source.peek(1).value == '{'
+
+    @staticmethod
+    def is_selection_stat(token_source):
+        return token_source.peek(1).value in ('if', 'switch')
+
+    @staticmethod
+    def is_iteration_stat(token_source):
+        return token_source.peek(1).value in ('while', 'do')
+
+    @staticmethod
+    def is_jump_stat(token_source):
+        return token_source.peek(1).value in ('continue', 'break', 'return')
+
+    @classmethod
+    def parse(cls, token_source):
+        node = cls("statement")
+
+        if cls.is_labeled_stat(token_source):
+            node.child.append(ParseLabeledStat.parse(token_source))
+        elif cls.is_exp_stat(token_source):
+            node.child.append(ParseExpStat.parse(token_source))
+        elif cls.is_compound_stat(token_source):
+            node.child.append(ParseCompoundStat.parse(token_source))
+        elif cls.is_selection_stat(token_source):
+            node.child.append(ParseSelectionStat.parse(token_source))
+        elif cls.is_iteration_stat(token_source):
+            node.child.append(ParseIterationStat.parse(token_source))
+        elif cls.is_jump_stat(token_source):
+            node.child.append(ParseJumpStat.parse(token_source))
+        else:
+            raise ParseException("expect Statement")
+        # NOTE: maybe using a loop would avoid these ugly selection statements?
+        return node
 
 
 class ParseLabeledStat(ParseNode):
@@ -408,11 +513,36 @@ class ParseLabeledStat(ParseNode):
     parse labeled statement.
     """
 
-    def __init__(self):
-        super(ParseLabeledStat, self).__init__("labeled statement")
+    @classmethod
+    def parse(cls, token_source):
+        node = cls("labeled statement")
 
-    def parse(self, token_source):
-        pass
+        if token_source.peek(1).type == 'ID':
+            node.child.append(ParseToken.parse(token_source))
+            if token_source.peek(1).value == ':':
+                node.child.append(ParseToken.parse(token_source))
+                node.child.append(ParseStatement.parse(token_source))
+            else:
+                raise ParseException("expect ':'")
+        elif token_source.peek(1).value == 'case':
+            node.child.append(ParseToken.parse(token_source))
+            node.child.append(ParseLogicalOrExp.parse(token_source))
+            if token_source.peek(1).value == ':':
+                node.child.append(ParseToken.parse(token_source))
+                node.child.append(ParseStatement.parse(token_source))
+            else:
+                raise ParseException("expect ':'")
+        elif token_source.peek(1).value == 'default':
+            node.child.append(ParseToken.parse(token_source))
+            if token_source.peek(1).value == ':':
+                node.child.append(ParseToken.parse(token_source))
+                node.child.append(ParseStatement.parse(token_source))
+            else:
+                raise ParseException("expect ':'")
+        else:
+            raise ParseException("expect labeled statement element.")
+
+        return node
 
 
 class ParseExpStat(ParseNode):
@@ -427,11 +557,18 @@ class ParseExpStat(ParseNode):
     parse expression statement.
     """
 
-    def __init__(self):
-        super(ParseExpStat, self).__init__("expression statement")
+    @classmethod
+    def parse(cls, token_source):
+        node = cls("expression statement")
 
-    def parse(self, token_source):
-        pass
+        if token_source.peek(1).type in ('ID', 'VAL') or token_source.peek(1).value in ('(', '+', '-', '!', '++', '--'):
+            node.child.append(ParseExpression.parse(token_source))
+        if token_source.peek(1).value == ';':
+            node.child.append(ParseToken.parse(token_source))
+        else:
+            raise ParseException("expect ';'")
+
+        return node
 
 
 class ParseCompoundStat(ParseNode):
@@ -448,12 +585,24 @@ class ParseCompoundStat(ParseNode):
     parse compound statement.
     """
 
-    def __init__(self):
-        super(ParseCompoundStat, self).__init__("compound statement")
+    @classmethod
+    def parse(cls, token_source):
+        node = cls("compound statement")
 
-    def parse(self, token_source):
-        pass
+        if token_source.peep(1).value == '{':
+            node.child.append(ParseToken.parse(token_source))
+            if token_source.peek(1).value in var_types:
+                node.child.append(ParseDeclList.parse(token_source))
+            if ParseStatement.is_stat(token_source.peek(1)):
+                node.child.append(ParseStatList.parse(token_source))
+            if token_source.peek(1).value == '}':
+                node.child.append(ParseToken.parse(token_source))
+            else:
+                raise ParseException("expect '}'")
+        else:
+            raise ParseException("expect '{'")
 
+        return node
 
 
 class ParseStatList(ParseNode):
@@ -468,11 +617,15 @@ class ParseStatList(ParseNode):
     parse statement list.
     """
 
-    def __init__(self):
-        super(ParseStatList, self).__init__("statement list")
+    @classmethod
+    def parse(cls, token_source):
+        node = cls("statement list")
 
-    def parse(self, token_source):
-        pass
+        node.child.append(ParseStatement.parse(token_source))
+        while ParseStatement.is_stat(token_source.peek(1)):
+            node.child.append(ParseStatement.parse(token_source))
+
+        return node
 
 
 class ParseSelectionStat(ParseNode):
@@ -489,11 +642,41 @@ class ParseSelectionStat(ParseNode):
     parse selection statement.
     """
 
-    def __init__(self):
-        super(ParseSelectionStat, self).__init__("selection statement")
+    @classmethod
+    def parse(cls, token_source):
+        node = cls("selection statement")
 
-    def parse(self, token_source):
-        pass
+        if token_source.peek(1).value == 'if':
+            node.child.append(ParseToken.parse(token_source))
+            if token_source.peek(1).value == '(':
+                node.child.append(ParseToken.parse(token_source))
+                node.child.append(ParseExpression.parse(token_source))
+                if token_source.peek(1).value == ')':
+                    node.child.append(ParseToken.parse(token_source))
+                    node.child.append(ParseStatement.parse(token_source))
+                    if token_source.peek(1).value == 'else':
+                        node.child.append(ParseToken.parse(token_source))
+                        node.child.append(ParseStatement.parse(token_source))
+                else:
+                    raise ParseException("expect ')'.")
+            else:
+                raise ParseException("expect '('.")
+        elif token_source.peek(1).value == 'switch':
+            node.child.append(ParseToken.parse(token_source))
+            if token_source.peek(1).value == '(':
+                node.child.append(ParseToken.parse(token_source))
+                node.child.append(ParseExpression.parse(token_source))
+                if token_source.peek(1).value == ')':
+                    node.child.append(ParseToken.parse(token_source))
+                    node.child.append(ParseStatement.parse(token_source))
+                else:
+                    raise ParseException("expect ')'.")
+            else:
+                raise ParseException("expect '('.")
+        else:
+            raise ParseException("expect selection statement.")
+
+        return node
 
 
 class ParseIterationStat(ParseNode):
@@ -509,11 +692,46 @@ class ParseIterationStat(ParseNode):
     parse iteration statement.
     """
 
-    def __init__(self):
-        super(ParseIterationStat, self).__init__("iteration statement")
+    @classmethod
+    def parse(cls, token_source):
+        node = cls("iteration statement")
 
-    def parse(self, token_source):
-        pass
+        if token_source.peek(1).value == 'while':
+            node.child.append(ParseToken.parse(token_source))
+            if token_source.peek(1).value == '(':
+                node.child.append(ParseToken.parse(token_source))
+                node.child.append(ParseExpression.parse(token_source))
+                if token_source.peek(1).value == ')':
+                    node.child.append(ParseToken.parse(token_source))
+                    node.child.append(ParseStatement.parse(token_source))
+                else:
+                    raise ParseException("expect ')'.")
+            else:
+                raise ParseException("expect '('.")
+        elif token_source.peek(1).value == 'do':
+            node.child.append(ParseToken.parse(token_source))
+            node.child.append(ParseStatement.parse(token_source))
+            if token_source.peek(1).value == 'while':
+                node.child.append(ParseToken.parse(token_source))
+                if token_source.peek(1).value == '(':
+                    node.child.append(ParseToken.parse(token_source))
+                    node.child.append(ParseExpression.parse(token_source))
+                    if token_source.peek(1).value == ')':
+                        node.child.append(ParseToken.parse(token_source))
+                        if token_source.peek(1).value == ';':
+                            node.child.append(ParseToken.parse(token_source))
+                        else:
+                            raise ParseException("expect ';'.")
+                    else:
+                        raise ParseException("expect ')'.")
+                else:
+                    raise ParseException("expect '('.")
+            else:
+                raise ParseException("expect 'while'.")
+        else:
+            raise ParseException("expect iteration statement.")
+
+        return node
 
 
 class ParseJumpStat(ParseNode):
@@ -532,11 +750,32 @@ class ParseJumpStat(ParseNode):
     parse jump statement.
     """
 
-    def __init__(self):
-        super(ParseJumpStat, self).__init__("jump statement")
+    @classmethod
+    def parse(cls, token_source):
+        node = cls("jump statement")
 
-    def parse(self, token_source):
-        pass
+        if token_source.peek(1).value == 'continue':
+            node.child.append(ParseToken.parse(token_source))
+            if token_source.peek(1).value == ';':
+                node.child.append(ParseToken.parse(token_source))
+            else:
+                raise ParseException("expect ';'.")
+        elif token_source.peek(1).value == 'break':
+            node.child.append(ParseToken.parse(token_source))
+            if token_source.peek(1).value == ';':
+                node.child.append(ParseToken.parse(token_source))
+            else:
+                raise ParseException("expect ';'.")
+        elif token_source.peek(1).value == 'return':
+            node.child.append(ParseToken.parse(token_source))
+            if token_source.peek(1).value == ';':
+                node.child.append(ParseToken.parse(token_source))
+                if token_source.peek(1).type in ('ID', 'VAL') or token_source.peek(1).value in ('(', '+', '-', '!', '++', '--'):
+                    node.child.append(ParseExpression.parse(token_source))
+            else:
+                raise ParseException("expect ';'.")
+
+        return node
 
 
 class ParseExpression(ParseNode):
@@ -550,12 +789,17 @@ class ParseExpression(ParseNode):
                             ;
     parse expression.
     """
+    
+    @classmethod
+    def parse(cls, token_source):
+        node = cls("expression")
 
-    def __init__(self):
-        super(ParseExpression, self).__init__("expression")
+        node.child.append(ParseAssignmentExp.parse(token_source))
+        while token_source.peek(1).value == ',':
+            node.child.append(ParseToken.parse(token_source))
+            node.child.append(ParseAssignmentExp.parse(token_source))
 
-    def parse(self, token_source):
-        pass
+        return node
 
 
 class ParseAssignmentExp(ParseNode):
@@ -570,11 +814,16 @@ class ParseAssignmentExp(ParseNode):
     parse assignment expression.
     """
 
-    def __init__(self):
-        super(ParseAssignmentExp, self).__init__("assignment expression")
+    @classmethod
+    def parse(cls, token_source):
+        node = cls("assignment expression")
 
-    def parse(self, token_source):
-        pass
+        while token_source.peek(1).type in ('ID', 'VAL') or token_source.peek(1).value in ('(', '+', '-', '!', '++', '--'):
+            node.child.append(ParseUnaryExp.parse(token_source))
+            node.child.append(ParseAssignmentOperator.parse(token_source))
+        node.child.append(ParseAssignmentExp.parse(token_source))
+
+        return node
 
 
 class ParseAssignmentOperator(ParseNode):
@@ -588,11 +837,16 @@ class ParseAssignmentOperator(ParseNode):
     parse assignment expression.
     """
 
-    def __init__(self):
-        super(ParseAssignmentOperator, self).__init__("assignment operator")
+    @staticmethod
+    def is_assignment_operator(token_source):
+        return token_source.peek(1).value in ('=', '*=', '/=', '+=', '-=')
 
-    def parse(self, token_source):
-        pass
+    @classmethod
+    def parse(cls, token_source):
+        if cls.is_assignment_operator(token_source):
+            return cls(token_source.get())
+        else:
+            raise ParseException("expect assignment operator")
 
 
 class ParseLogicalOrExp(ParseNode):
@@ -607,11 +861,16 @@ class ParseLogicalOrExp(ParseNode):
     parse logical or expression.
     """
 
-    def __init__(self):
-        super(ParseLogicalOrExp, self).__init__("logical or expression")
+    @classmethod
+    def parse(cls, token_source):
+        node = cls("logical or expression")
 
-    def parse(self, token_source):
-        pass
+        node.child.append(ParseLogicalAndExp.parse(token_source))
+        while token_source.peek(1).value == '||':
+            node.child.append(ParseToken.parse(token_source))
+            node.child.append(ParseLogicalAndExp.parse(token_source))
+
+        return node
 
 
 class ParseLogicalAndExp(ParseNode):
@@ -626,11 +885,16 @@ class ParseLogicalAndExp(ParseNode):
     parse logical and expression.
     """
 
-    def __init__(self):
-        super(ParseLogicalAndExp, self).__init__("logical and expression")
+    @classmethod
+    def parse(cls, token_source):
+        node = cls("logical andr expression")
 
-    def parse(self, token_source):
-        pass
+        node.child.append(ParseEqualityExp.parse(token_source))
+        while token_source.peek(1).value == '&&':
+            node.child.append(ParseToken.parse(token_source))
+            node.child.append(ParseEqualityExp.parse(token_source))
+
+        return node
 
 
 class ParseEqualityExp(ParseNode):
@@ -641,17 +905,21 @@ class ParseEqualityExp(ParseNode):
                             | equality_exp '!=' relational_exp
                             ;
     EBNF:
-    equality_exp            : relational_exp { '==' relational_exp }
-                            | relational_exp { '!=' relational_exp }
+    equality_exp            : relational_exp { '==' relational_exp | '!=' relational_exp }
                             ;
     parse equality expression.
     """
 
-    def __init__(self):
-        super(ParseEqualityExp, self).__init__("equality expression")
+    @classmethod
+    def parse(cls, token_source):
+        node = cls("equality expression")
 
-    def parse(self, token_source):
-        pass
+        node.child.append(ParseRelationalExp.parse(token_source))
+        while token_source.peek(1).value in ('!=', '=='):
+            node.child.append(ParseToken.parse(token_source))
+            node.child.append(ParseRelationalExp.parse(token_source))
+
+        return node
 
 
 class ParseRelationalExp(ParseNode):
@@ -664,19 +932,21 @@ class ParseRelationalExp(ParseNode):
                             | relational_exp '>=' additive_exp
                             ;
     EBNF:
-    relational_exp          : additive_exp { '<' additive_exp }
-                            | additive_exp { '>' additive_exp }
-                            | additive_exp { '<=' additive_exp }
-                            | additive_exp { '>=' additive_exp }
+    relational_exp          : additive_exp { '<' additive_exp | '>' additive_exp | '<=' additive_exp | '>=' additive_exp }
                             ;
     parse relational expression.
     """
 
-    def __init__(self):
-        super(ParseRelationalExp, self).__init__("relational expression")
+    @classmethod
+    def parse(cls, token_source):
+        node = cls("relational expression")
 
-    def parse(self, token_source):
-        pass
+        node.child.append(ParseAdditiveExp.parse(token_source))
+        while token_source.peek(1).value in ('>', '<', '>=', '<='):
+            node.child.append(ParseToken.parse(token_source))
+            node.child.append(ParseAdditiveExp.parse(token_source))
+
+        return node
 
 
 class ParseAdditiveExp(ParseNode):
@@ -687,17 +957,21 @@ class ParseAdditiveExp(ParseNode):
                             | additive_exp '-' mult_exp
                             ;
     EBNF:
-    additive_exp            : mult_exp '+' mult_exp
-                            | mult_exp '-' mult_exp
+    additive_exp            : mult_exp { '+' mult_exp | '-' mult_exp }
                             ;
     parse additive expression.
     """
 
-    def __init__(self):
-        super(ParseAdditiveExp, self).__init__("additive expression")
+    @classmethod
+    def parse(cls, token_source):
+        node = cls("additive expression")
 
-    def parse(self, token_source):
-        pass
+        node.child.append(ParseMultExp.parse(token_source))
+        while token_source.peek(1).value in ('+', '-'):
+            node.child.append(ParseToken.parse(token_source))
+            node.child.append(ParseMultExp.parse(token_source))
+
+        return node
 
 
 class ParseMultExp(ParseNode):
@@ -708,36 +982,49 @@ class ParseMultExp(ParseNode):
                             | mult_exp '/' cast_exp
                             ;
     EBNF:
-    mult_exp                : cast_exp { '*' cast_exp }
-                            | cast_exp { '/' cast_exp }
+    mult_exp                : cast_exp { '*' cast_exp | '/' cast_exp }
                             ;
     parse multiple expression.
     """
 
-    def __init__(self):
-        super(ParseMultExp, self).__init__("multiple expression")
+    @classmethod
+    def parse(cls, token_source):
+        node = cls("multiple expression")
 
-    def parse(self, token_source):
-        pass
+        node.child.append(ParseCastExp.parse(token_source))
+        while token_source.peek(1).value in ('*', '/'):
+            node.child.append(ParseToken.parse(token_source))
+            node.child.append(ParseCastExp.parse(token_source))
+
+        return node
 
 
 class ParseCastExp(ParseNode):
     """
     BNF:
     cast_exp                : unary_exp
-                            | '(' spec_qualifier_list ')' cast_exp
+                            | '(' type_spec ')' cast_exp
                             ;
     EBNF:
-    cast_exp                : {'(' spec_qualifier_list ')'} unary_exp
+    cast_exp                : {'(' type_spec ')'} unary_exp
                             ;
     parse cast expression.
     """
 
-    def __init__(self):
-        super(ParseCastExp, self).__init__("cast expression")
+    @classmethod
+    def parse(cls, token_source):
+        node = cls("cast expression")
 
-    def parse(self, token_source):
-        pass
+        while token_source.peek(1).value == '(':
+            node.child.append(ParseToken.parse(token_source))
+            node.child.append(ParseTypeSpec.parse(token_source))
+            if token_source.peek(1).value == ')':
+                node.child.append(ParseToken.parse(token_source))
+            else:
+                raise ParseException("expect ')'")
+        node.child.append(ParseUnaryExp.parse(token_source))
+
+        return node
 
 
 class ParseUnaryExp(ParseNode):
@@ -749,19 +1036,23 @@ class ParseUnaryExp(ParseNode):
                             | unary_operator cast_exp
                             ;
     EBNF:
-    unary_exp               : { '++' } postfix_exp
-                            | { '--' } postfix_exp
-                            | { '++' } unary_operator cast_exp
-                            | { '--' } unary_operator cast_exp
+    unary_exp               : { '++' | '--' } ( postfix_exp | unary_operator cast_exp )
                             ;
     parse unary expression.
     """
 
-    def __init__(self):
-        super(ParseUnaryExp, self).__init__("unary expression")
+    @classmethod
+    def parse(cls, token_source):
+        node = cls("unary expression")
+        
+        while token_source.peek(1).value in ('++', '--'):
+            node.child.append(ParseToken.parse(token_source))
+        if  token_source.peek(1).type in ('ID', 'VAL') or token_source.peek(1).value == '(':
+            node.child.append(ParsePostfixExp.parse(token_source))
+        elif token_source.peek(1).value in ('+', '-', '!'):
+            node.child.append(ParseUnaryOperator.parse(token_source))            
 
-    def parse(self, token_source):
-        pass
+        return node
 
 
 class ParseUnaryOperator(ParseNode):
@@ -775,11 +1066,12 @@ class ParseUnaryOperator(ParseNode):
     parse unary operator.
     """
 
-    def __init__(self):
-        super(ParseUnaryOperator, self).__init__("unary operator")
-
-    def parse(self, token_source):
-        pass
+    @classmethod
+    def parse(cls, token_source):
+        if token_source.peek(1).value in ('+', '-', '!'):
+            return cls(token_source.get())
+        else:
+            raise ParseException("expect unary Operator.")
 
 
 class ParsePostfixExp(ParseNode):
@@ -793,20 +1085,30 @@ class ParsePostfixExp(ParseNode):
                             | postfix_exp '--'
                             ;
     EBNF:
-    postfix_exp             : primary_exp { '[' exp ']' }
-                            | primary_exp { '(' argument_exp_list ')' }
-                            | primary_exp { '('			')' }
-                            | primary_exp { '++' }
-                            | primary_exp { '--' }
+    postfix_exp             : primary_exp { '[' exp ']' | '(' [ argument_exp_list ] ')' | '++' | '--' }
                             ;
     parse postfix expression.
     """
 
-    def __init__(self):
-        super(ParsePostfixExp, self).__init__("postfix expression")
+    @classmethod
+    def parse(cls, token_source):
+        node = cls("postfix expression")
 
-    def parse(self, token_source):
-        pass
+        node.child.append(ParsePrimaryExp.parse(token_source))
+        if token_source.peek(1).value == '[':
+            node.child.append(ParseToken.parse(token_source))
+            node.child.append(ParseExpression.parse(token_source))
+        elif token_source.peek(1).value == '(':
+            node.child.append(ParseToken.parse(token_source))
+            if token_source.peek(1).type in ('ID', 'VAL') or token_source.peek(1).value in ('+', '-', '!', '(', '++', '--'):
+                node.child.append(ParseArgumentExpList.parse(token_source))
+            node.child.append(ParseExpression.parse(token_source))
+        elif token_source.peek(1).value == '++':
+            node.child.append(ParseToken.parse(token_source))
+        elif token_source.peek(1).value == '--':
+            node.child.append(ParseToken.parse(token_source))
+
+        return node
 
 
 class ParsePrimaryExp(ParseNode):
@@ -826,11 +1128,12 @@ class ParsePrimaryExp(ParseNode):
     parse primary expression.
     """
 
-    def __init__(self):
-        super(ParsePrimaryExp, self).__init__("primary expression")
-
-    def parse(self, token_source):
-        pass
+    @classmethod
+    def parse(cls, token_source):
+        if token_source.peek(1).type in ('ID', 'VAL') or token_source.peek(1).value == '(':
+            return cls(token_source.get())
+        else:
+            raise ParseException("expect id, const value, string or '('")
 
 
 class ParseArgumentExpList(ParseNode):
@@ -845,29 +1148,34 @@ class ParseArgumentExpList(ParseNode):
     parse argument expression.
     """
 
-    def __init__(self):
-        super(ParseArgumentExpList, self).__init__("argument expression")
+    @classmethod
+    def parse(cls, token_source):
+        node = cls("argument expression")
 
-    def parse(self, token_source):
-        pass
+        node.child.append(ParseAssignmentExp.parse(token_source))
+        while token_source.peek(1).value == ',':
+            node.child.append(ParseAssignmentExp.parse(token_source))
 
-class ParseConst(ParseNode):
-    """
-    BNF:
-    const                   : int_const
-                            | char_const
-                            | float_const
-                            ;
-    EBNF:
-    const                   : int_const
-                            | char_const
-                            | float_const
-                            ;
-    parse const.
-    """
+        return node
 
-    def __init__(self):
-        super(ParseConst, self).__init__("const")
+# NOTE: I don't think I need the class below.
+# class ParseConst(ParseNode):
+#     """
+#     BNF:
+#     const                   : int_const
+#                             | char_const
+#                             | float_const
+#                             ;
+#     EBNF:
+#     const                   : int_const
+#                             | char_const
+#                             | float_const
+#                             ;
+#     parse const.
+#     """
 
-    def parse(self, token_source):
-        pass
+#     def __init__(self):
+#         super(ParseConst, self).__init__("const")
+
+#     def parse(self, token_source):
+#         pass

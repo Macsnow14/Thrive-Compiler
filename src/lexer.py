@@ -115,25 +115,25 @@ class Lexer(object):
         next_char = self.src.next_char()
         self.read_buffer.append(next_char)
         if next_char == '+':
-            self._peep_next_tk('+')
+            self._peek_next_tk('+')
         elif next_char == '-':
-            self._peep_next_tk('-')
+            self._peek_next_tk('-')
         elif next_char == '=':
-            self._peep_next_tk('=')
+            self._peek_next_tk('=')
         elif next_char == '!':
-            self._peep_next_tk('=')
+            self._peek_next_tk('=')
         elif next_char == '>':
-            self._peep_next_tk('=')
+            self._peek_next_tk('=')
         elif next_char == '<':
-            self._peep_next_tk('=')
+            self._peek_next_tk('=')
         elif next_char == '&':
-            self._peep_next_tk('&')
+            self._peek_next_tk('&')
         elif next_char == '|':
-            self._peep_next_tk('|')
+            self._peek_next_tk('|')
         token_literal: str = ''.join(self.read_buffer)
         return self.create_token('OP', token_literal)
 
-    def _peep_next_tk(self, token, harsh=False):
+    def _peek_next_tk(self, token, harsh=False):
         """to see if a token is binocular operator."""
         if self.src.next_char(True) == token:
             next_char = self.src.next_char()
@@ -151,20 +151,20 @@ class Lexer(object):
     def match(self):
         """match engine"""
         while True:
-            peep_next_char: str = self.src.next_char(True)
-            if peep_next_char == -1:
+            peek_next_char: str = self.src.next_char(True)
+            if peek_next_char == -1:
                 break
-            if peep_next_char.isalpha():
+            if peek_next_char.isalpha():
                 self.match_literal()
-            elif peep_next_char.isdigit():
+            elif peek_next_char.isdigit():
                 self.match_digit()
-            elif peep_next_char == '#':
+            elif peek_next_char == '#':
                 self.match_line_comment()
-            elif peep_next_char in operators:
+            elif peek_next_char in operators:
                 self.match_operator()
-            elif peep_next_char in delimiters:
+            elif peek_next_char in delimiters:
                 self.match_delimiters()
-            elif self.src.is_line_end(peep_next_char) or peep_next_char == ' ':
+            elif self.src.is_line_end(peek_next_char) or peek_next_char == ' ':
                 self.src.next_char()
             else:
                 raise InvalidTokenException

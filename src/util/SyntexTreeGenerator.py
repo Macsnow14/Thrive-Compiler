@@ -8,9 +8,8 @@ To generate a AST from a given regular expression.
 # @Date:   2017-04-12 20:40:35
 # @Last Modified by:   Macsnow
 # @Last Modified time: 2017-06-05 14:57:51
-from src.exceptions import ParseError
+from src.exceptions import ParseException
 import json
-
 
 
 NonCharSymbol = ('|', '*', '(', ')')
@@ -69,9 +68,8 @@ class AST(object):
     def __init__(self, symbol):
         self.symbol = symbol
         self.child = list()
-        self.process = dict()
 
-    def parse(expression):
+    def parse(self, expression):
         raise NotImplementedError
 
     def __str__(self):
@@ -96,7 +94,8 @@ class NonTerminalSymbol_E(AST):
             if expression.judge() == ')':
                 self.child.append(TerminalSymbol(expression.get()))
             else:
-                raise ParseError('parse error: unexpect symbol \'%s\' in %d' % (expression.judge(), expression.ip))
+                raise ParseException('parse error: unexpect symbol \'%s\' in %d' % (
+                    expression.judge(), expression.ip))
 
             self.child.append(NonTerminalSymbol_T().parse(expression))
 
@@ -106,7 +105,8 @@ class NonTerminalSymbol_E(AST):
             self.child.append(NonTerminalSymbol_T().parse(expression))
 
         else:
-            raise ParseError('parse error: unexpect symbol \'%s\' in %d' % (expression.judge(), expression.ip))
+            raise ParseException('parse error: unexpect symbol \'%s\' in %d' % (
+                expression.judge(), expression.ip))
 
         return self
 
@@ -134,7 +134,8 @@ class NonTerminalSymbol_F(AST):
             self.child.append(TerminalSymbol(expression.get()))
 
         else:
-            raise ParseError('parse error: unexpect symbol \'%s\' in %d' % (expression.judge(), expression.ip))
+            raise ParseException('parse error: unexpect symbol \'%s\' in %d' % (
+                expression.judge(), expression.ip))
 
         return self
 

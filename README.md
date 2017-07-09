@@ -6,6 +6,39 @@ A practice of compiler principle.
 
 Also a practice of Python3 language.
 
+## REQUIRE
+
+### Var types
+
+- int 
+- float
+- bool
+- char
+
+### Value
+
+### Expressions
+
+#### Arithmetic expression
+
+`+`, `-`, `*`, `/`, `++`, `--`
+
+#### Relational expression
+
+`<`, `>`, `<=`, `>=`, `==`, `!=`
+
+#### Boolean expression
+
+`!`, `&&`, `||`
+
+### Statement
+
+- Assignment
+- Conditional
+- Loop
+- Procedure Call
+- Define
+
 ## TODO
 
 ### basic

@@ -1,6 +1,7 @@
 """Define some meta component of lexer.
 """
-from src.source_processor import Cursor
+from typing import List
+from src.source import Cursor
 
 
 class Token(object):
@@ -11,12 +12,30 @@ class Token(object):
     """
 
     def __init__(self, t_type: str, value, cursor: Cursor):
-        self.t_type = t_type
-        self.value = value
-        self.cursor = cursor
+        self.t_type: str = t_type
+        self.value: str or bool = value
+        self.cursor: Cursor = cursor
 
     def __str__(self):
         return '("%s", %s)' % (self.value, self.t_type)
 
     def __repr__(self):
         return '("%s", %s)' % (self.value, self.t_type)
+
+
+class TokenSource(object):
+    """
+    processed source.
+    basiclly its a list of token with handle method.
+    """
+
+    def __init__(self, token_list: List[Token]):
+        self.token_list: List[Token] = token_list
+        self.token_pointer: int = 0
+
+    def get(self):
+        self.token_pointer += 1
+        return self.token_list[self.token_pointer - 1]
+
+    def peek(self, seq: int=1):
+        return self.token_list[self.token_pointer + seq]

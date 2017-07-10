@@ -66,6 +66,7 @@ class FileSource(BaseSource):
                 self.cursor.line += 1 if not peek else 0
                 return self.line_buffer.pop(0) if not peek else self.line_buffer[0]
             else:
+                self.file_obj.close()
                 return -1
 
 

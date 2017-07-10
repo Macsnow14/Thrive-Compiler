@@ -12,15 +12,15 @@ class Token(object):
     """
 
     def __init__(self, t_type: str, value, cursor: Cursor):
-        self.t_type: str = t_type
+        self.type: str = t_type
         self.value: str or bool = value
         self.cursor: Cursor = cursor
 
     def __str__(self):
-        return '("%s", %s)' % (self.value, self.t_type)
+        return '("%s", %s)' % (self.value, self.type)
 
     def __repr__(self):
-        return '("%s", %s)' % (self.value, self.t_type)
+        return '("%s", %s)' % (self.value, self.type)
 
 
 class TokenSource(object):
@@ -38,4 +38,4 @@ class TokenSource(object):
         return self.token_list[self.token_pointer - 1]
 
     def peek(self, seq: int=1):
-        return self.token_list[self.token_pointer + seq]
+        return self.token_list[self.token_pointer + seq - 1]

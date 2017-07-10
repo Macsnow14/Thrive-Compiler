@@ -16,7 +16,7 @@ def parse_dict(parseNode):
     """
     parse AST to dict obj.
     """
-    return {'symbol': parseNode.token,
+    return {'symbol': parseNode.token if type(parseNode.token) is str else parseNode.token.value,
             'child': [parse_dict(node) for node in parseNode.child if parseNode.child]}
 
 
@@ -25,7 +25,7 @@ class ParseNode(object):
     Abstract Syntex Tree base class
     """
 
-    def __init__(self, token: Token):
+    def __init__(self, token: Token or str):
         self.token: Token = token
         self.child: List[ParseNode] = list()
 
@@ -67,7 +67,7 @@ class ParsetranslationUnit(ParseNode):
         node = cls('translation Unit')
 
         node.child.append(ParseExternalDecl.parse(token_source))
-        while token_source.peek(1).type == 'KW' and token_source.peek(1) in var_types:
+        while token_source.peek(1).value in var_types:
             node.child.append(ParseExternalDecl.parse(token_source))
 
         return node
@@ -89,12 +89,13 @@ class ParseExternalDecl(ParseNode):
     def parse(cls, token_source):
         node = cls('external declaration')
 
-        node.child.append(ParseTypeSpec.parse(token_source.get()))
+        node.child.append(ParseTypeSpec.parse(token_source))
         if token_source.peek(1).type == 'ID':
-            if token_source.peek(1).value == (';' or '[' or ','):
+            if token_source.peek(2).value == (';' or '[' or ','):
                 node.child.append(
                     ParseInitDeclaratorList.parse(token_source))
-            elif token_source.peek(1).value == '(':
+                node.child.append(ParseToken.parse(token_source))
+            elif token_source.peek(2).value == '(':
                 node.child.append(
                     ParseFunctionDefinition.parse(token_source))
             else:
@@ -142,7 +143,7 @@ class ParseDecl(ParseNode):
     def parse(cls, token_source):
         node = cls('declaration')
 
-        node.child.append(ParseTypeSpec.parse(token_source.get()))
+        node.child.append(ParseTypeSpec.parse(token_source))
         node.child.append(ParseInitDeclaratorList.parse(token_source))
         if token_source.peek(1).value == ';':
             node.child.append(ParseToken.parse(token_source))
@@ -193,7 +194,7 @@ class ParseTypeSpec(ParseNode):
         if token_source.peek(1).value in var_types:
             return cls(token_source.get())
         else:
-            raise ParseException('expect var type')
+            raise ParseException('%s is not a var type, expect var type' % (token_source.peek(1).value))
 
 
 class ParseInitDeclaratorList(ParseNode):
@@ -262,7 +263,6 @@ class ParseDeclarator(ParseNode):
 
     parse declarator.
     """
-    # FIXME: EBNF is wrong.
 
     @classmethod
     def parse(cls, token_source):
@@ -282,15 +282,17 @@ class ParseDeclarator(ParseNode):
                 elif token_source.peek(1).value == '(':
                     node.child.append(ParseToken.parse(token_source))
                     if token_source.peek(1).value in var_types:
-                        node.child.append(ParseToken.parse(token_source))
+                        node.child.append(ParseParamList.parse(token_source))
                     elif token_source.peek(1).type == 'ID':
-                        node.child.append(ParseToken.parse(token_source))
+                        node.child.append(ParseIdList.parse(token_source))
                     if token_source.peek(1).value == ')':
                         node.child.append(ParseToken.parse(token_source))
                     else:
-                        raise ParseException("expect ')'")
+                        raise ParseException("'%s' is not ')', expect ')'" % (token_source.peek(1).value))
         else:
-            raise ParseException("expect ID.")
+            raise ParseException("'%s' is not ID, expect ID." % (token_source.peek(1).value))
+
+        return node
 
 
 class ParseParamList(ParseNode):
@@ -336,7 +338,7 @@ class ParseParamDecl(ParseNode):
         node = cls("param decl")
 
         node.child.append(ParseToken.parse(token_source))
-        while token_source.peek(1).value in var_types:
+        while token_source.peek(1).type == 'ID':
             node.child.append(ParseDeclarator.parse(token_source))
 
         return node
@@ -589,11 +591,11 @@ class ParseCompoundStat(ParseNode):
     def parse(cls, token_source):
         node = cls("compound statement")
 
-        if token_source.peep(1).value == '{':
+        if token_source.peek(1).value == '{':
             node.child.append(ParseToken.parse(token_source))
             if token_source.peek(1).value in var_types:
                 node.child.append(ParseDeclList.parse(token_source))
-            if ParseStatement.is_stat(token_source.peek(1)):
+            if ParseStatement.is_stat(token_source):
                 node.child.append(ParseStatList.parse(token_source))
             if token_source.peek(1).value == '}':
                 node.child.append(ParseToken.parse(token_source))
@@ -622,7 +624,7 @@ class ParseStatList(ParseNode):
         node = cls("statement list")
 
         node.child.append(ParseStatement.parse(token_source))
-        while ParseStatement.is_stat(token_source.peek(1)):
+        while ParseStatement.is_stat(token_source):
             node.child.append(ParseStatement.parse(token_source))
 
         return node
@@ -768,12 +770,12 @@ class ParseJumpStat(ParseNode):
                 raise ParseException("expect ';'.")
         elif token_source.peek(1).value == 'return':
             node.child.append(ParseToken.parse(token_source))
+            if token_source.peek(1).type in ('ID', 'VAL') or token_source.peek(1).value in ('(', '+', '-', '!', '++', '--'):
+                node.child.append(ParseExpression.parse(token_source))
             if token_source.peek(1).value == ';':
                 node.child.append(ParseToken.parse(token_source))
-                if token_source.peek(1).type in ('ID', 'VAL') or token_source.peek(1).value in ('(', '+', '-', '!', '++', '--'):
-                    node.child.append(ParseExpression.parse(token_source))
             else:
-                raise ParseException("expect ';'.")
+                raise ParseException("'%s' is not ';', expect ';'" % (token_source.peek(1).value))
 
         return node
 
@@ -805,11 +807,11 @@ class ParseExpression(ParseNode):
 class ParseAssignmentExp(ParseNode):
     """
     BNF:
-    assignment_exp          : conditional_exp
+    assignment_exp          : logical_or_exp
                             | unary_exp assignment_operator assignment_exp
                             ;
     EBNF:
-    assignment_exp          : { unary_exp assignment_operator } conditional_exp
+    assignment_exp          : { unary_exp assignment_operator } logical_or_exp
                             ;
     parse assignment expression.
     """
@@ -818,10 +820,10 @@ class ParseAssignmentExp(ParseNode):
     def parse(cls, token_source):
         node = cls("assignment expression")
 
-        while token_source.peek(1).type in ('ID', 'VAL') or token_source.peek(1).value in ('(', '+', '-', '!', '++', '--'):
+        while (token_source.peek(1).type in ('ID', 'VAL') or token_source.peek(1).value in ('(', '+', '-', '!', '++', '--')) and token_source.peek(2) in ('=', '*=', '/=', '+=', '-='):
             node.child.append(ParseUnaryExp.parse(token_source))
             node.child.append(ParseAssignmentOperator.parse(token_source))
-        node.child.append(ParseAssignmentExp.parse(token_source))
+        node.child.append(ParseLogicalOrExp.parse(token_source))
 
         return node
 
@@ -846,7 +848,7 @@ class ParseAssignmentOperator(ParseNode):
         if cls.is_assignment_operator(token_source):
             return cls(token_source.get())
         else:
-            raise ParseException("expect assignment operator")
+            raise ParseException("'%s' is not an assignment operator, expect assignment operator" % (token_source.peek(1).value))
 
 
 class ParseLogicalOrExp(ParseNode):
@@ -1098,11 +1100,18 @@ class ParsePostfixExp(ParseNode):
         if token_source.peek(1).value == '[':
             node.child.append(ParseToken.parse(token_source))
             node.child.append(ParseExpression.parse(token_source))
+            if token_source.peek(1).value == ']':
+                node.child.append(ParseToken.parse(token_source))
+            else:
+                raise ParseException("'%s' is not ')', expect ')'")
         elif token_source.peek(1).value == '(':
             node.child.append(ParseToken.parse(token_source))
             if token_source.peek(1).type in ('ID', 'VAL') or token_source.peek(1).value in ('+', '-', '!', '(', '++', '--'):
                 node.child.append(ParseArgumentExpList.parse(token_source))
-            node.child.append(ParseExpression.parse(token_source))
+            if token_source.peek(1).value == ')':
+                node.child.append(ParseToken.parse(token_source))
+            else:
+                raise ParseException("'%s' is not ')', expect ')'")
         elif token_source.peek(1).value == '++':
             node.child.append(ParseToken.parse(token_source))
         elif token_source.peek(1).value == '--':

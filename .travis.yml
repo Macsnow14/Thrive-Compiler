@@ -1,16 +1,15 @@
-lauguage: python
+language: python
 
-python: '3.6'
-dist: trusty
-sudo: required
+python:
+  - '3.6'
 
-before_install:
-  - if [[ $TOXENV = py35 && -f ~/virtualenv/python3.5/bin/activate ]]; then source ~/virtualenv/python3.5/bin/activate; fi
-  - export PYTHONPATH=/usr/lib/python3/dist-packages:/usr/local/lib/python3.6/dist-packages
-  - sudo apt-get install python3-pip
+sudo: false
 
 install:
-  - sudo pip3 install -r requirements.txt
+  - "pip install -r requirements.txt"
 
 script: 
-  - py.test -s
+  - "pytest -s"
+
+notifications:
+  email: false

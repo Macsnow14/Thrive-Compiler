@@ -5,7 +5,7 @@
 # @Last Modified time: 2017-04-15 13:35:33
 import pytest
 from src.util import SyntexTreeGenerator
-from src import exceptions
+from src.exceptions import ParseException
 
 
 class TestASTGenerator:
@@ -27,5 +27,5 @@ class TestASTGenerator:
 
     def test_exception_handle(self, expression):
         for expression in expression['badExpressions']:
-            with pytest.raises(exceptions.ParseError):
+            with pytest.raises(ParseException):
                 SyntexTreeGenerator.NonTerminalSymbol_E().parse(expression)

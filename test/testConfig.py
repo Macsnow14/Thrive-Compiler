@@ -21,7 +21,7 @@ grammar_str = ('E -> TR',
 non_terminators = ('E', 'T', 'R')
 terminators = ('i', 'n', '(', ')', '+', '-')
 
-source_str = """// recursive factorial calculation
+source_str = """# recursive factorial calculation
 int b;
 
 int fact(int a){
@@ -31,4 +31,4 @@ int fact(int a){
     return a * fact(a - 1);
 }
 
-b := fact(10);"""
+b = fact(10);"""

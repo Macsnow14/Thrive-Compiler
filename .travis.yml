@@ -1,8 +1,7 @@
 lauguage: python
 
-python: '3.6.0'
-dist: precise"
-group": "stable",
+python: 
+  - '3.6.0'
 sudo: false
 
 install:

@@ -170,4 +170,4 @@ class Lexer(object):
                 raise InvalidTokenException
             self.read_buffer = []
 
-            return self.token_list
+        return self.token_list

@@ -1,17 +1,15 @@
-lauguage: python
+language: python
 
-python: 
-  - "3.6"
+python:
+  - '3.6.0'
 
-sudo: required
-dist: precise
+sudo: false
 
-before_install: 
-  - export PYTHONPATH=/usr/lib/python3/dist-packages:/usr/local/lib/python3.5/dist-packages
-  - sudo apt-get install python3-pip
-
-install: 
-  - sudo pip3 install -r requirements.txt
+install:
+  - true
 
 script: 
-  - py.test -s
+  - true
+
+notifications:
+  email: false

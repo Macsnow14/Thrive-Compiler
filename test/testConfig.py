@@ -21,14 +21,21 @@ grammar_str = ('E -> TR',
 non_terminators = ('E', 'T', 'R')
 terminators = ('i', 'n', '(', ')', '+', '-')
 
-source_str = """# recursive factorial calculation
-int b;
-
-int fact(int a){
-    if(a == 0){
-        return 1;
+source_str = """# Default Sample
+# Feel free to explore the World of Picol
+int main () {
+  # Declare an matrix of matrix
+  float a[2][2][2][2];
+  int i = 0, j = 100;
+  bool test = true;
+  while (i < j || test) {
+    i++;
+    j--;
+    if ( j - i > 2 * j && test) {
+      j = j + i;
     }
-    return a * fact(a - 1);
+  }
 }
 
-b = fact(10);"""
+int c;
+"""

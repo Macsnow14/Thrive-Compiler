@@ -2,7 +2,8 @@ lauguage: python
 
 python: 
   - '3.6.0'
-sudo: false
+
+sudo: required
 
 before_install:
   - sudo apt-get install python3-pip

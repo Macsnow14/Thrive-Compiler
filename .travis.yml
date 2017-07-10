@@ -5,7 +5,7 @@ dist: trusty
 sudo: required
 
 before_install:
-  - if [[ $TOXENV = py35 && -f ~/virtualenv/python3.5/bin/activate ]]; then source ~/virtualenv/python3.5/bin/activate; fi
+  - if [[ $TOXENV = py36 && -f ~/virtualenv/python3.6/bin/activate ]]; then source ~/virtualenv/python3.6/bin/activate; fi
   - export PYTHONPATH=/usr/lib/python3/dist-packages:/usr/local/lib/python3.6/dist-packages
   - sudo apt-get install python3-pip
 

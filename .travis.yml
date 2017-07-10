@@ -1,15 +1,15 @@
 language: python
 
 python:
-  - '3.6.0'
+  - '3.6'
 
 sudo: false
 
 install:
-  - true
+  - "pip install -r requirements.txt"
 
 script: 
-  - true
+  - "pytest -s"
 
 notifications:
   email: false

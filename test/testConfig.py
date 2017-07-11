@@ -22,7 +22,7 @@ non_terminators = ('E', 'T', 'R')
 terminators = ('i', 'n', '(', ')', '+', '-')
 
 source_str = """# Default Sample
-# Feel free to explore the World of Picol
+# Feel free to explore the World of thrilang.
 int main () {
   # Declare an matrix of matrix
   float a[2][2][2][2];

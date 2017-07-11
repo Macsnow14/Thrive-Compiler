@@ -33,3 +33,7 @@ def generate_dot(source_file: str, output_file: str):
     parse_tree = ParsetranslationUnit.parse(token_source)
     convert_parse_tree_to_dot(parse_tree_graph, parse_tree, None)
     parse_tree_graph.write(output_file)
+
+
+if __name__ == '__main__':
+    generate_dot('test.tl', 'tree.dot')

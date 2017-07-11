@@ -15,6 +15,12 @@ class Cursor(object):
         """return position"""
         return self.line, self.col
 
+    def __str__(self):
+        return "line %d, col %d" % (self.line, self.col)
+
+    def __repr__(self):
+        return "line %d, col %d" % (self.line, self.col)
+
 
 class BaseSource(object):
     """character peeker."""

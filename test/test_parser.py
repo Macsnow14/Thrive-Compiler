@@ -2,7 +2,7 @@
 import pytest
 from src.token import TokenSource
 from src.lexer import Lexer
-from src.paser import ParsetranslationUnit, parse_dict
+from src.parser import ParsetranslationUnit
 from src.source import FileSource
 
 class TestParser:

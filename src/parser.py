@@ -30,7 +30,15 @@ class ParseNode(object):
         self.child: List[ParseNode] = list()
 
     def __str__(self):
-        return json.dumps(parse_dict(self), indent=2)
+        return json.dumps(ParseNode.parse_dict(self), indent=2)
+
+    @staticmethod
+    def parse_dict(parse_node):
+        """
+        parse AST to dict obj.
+        """
+        return {'symbol': parse_node.token if isinstance(parse_node.token, str) else parse_node.token.value,
+                'child': [ParseNode.parse_dict(node) for node in parse_node.child if parse_node.child]}
 
 
 class ParseToken(ParseNode):
@@ -44,7 +52,7 @@ class ParseToken(ParseNode):
         return cls(token_source.get())
 
 
-class ParsetranslationUnit(ParseNode):
+class ParseTranslationUnit(ParseNode):
     """
     BNF:
     translation_unit    : external_decl
@@ -116,7 +124,7 @@ class ParseFunctionDefinition(ParseNode):
     @classmethod
     def parse(cls, token_source: TokenSource):
         """parse token source to recursively construct a node."""
-        node = cls('function definition')
+        node = cls("function definition")
 
         node.child.append(ParseDeclarator.parse(token_source))
         node.child.append(ParseCompoundStat.parse(token_source))

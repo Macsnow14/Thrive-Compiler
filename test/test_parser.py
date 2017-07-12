@@ -2,7 +2,7 @@
 import pytest
 from src.token import TokenSource
 from src.lexer import Lexer
-from src.parser import ParsetranslationUnit
+from src.parser import ParseTranslationUnit
 from src.source import FileSource
 
 class TestParser:
@@ -21,5 +21,5 @@ class TestParser:
         self.token_source = TokenSource(lexer.token_list)
 
     def test_parsing(self, test_source_file):
-        ast = ParsetranslationUnit.parse(self.token_source)
+        ast = ParseTranslationUnit.parse(self.token_source)
         print(ast)

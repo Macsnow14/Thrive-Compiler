@@ -282,6 +282,7 @@ class ParseDeclarator(ParseNode):
     parse declarator.
     """
 
+    # TODO: cat function declaration down.
     @classmethod
     def parse(cls, token_source: TokenSource):
         """parse token source to recursively construct a node."""
@@ -357,6 +358,7 @@ class ParseParamDecl(ParseNode):
     parse param decl.
     """
 
+    # FIXME: EBNF is a wrong one.
     @classmethod
     def parse(cls, token_source: TokenSource):
         """parse token source to recursively construct a node."""

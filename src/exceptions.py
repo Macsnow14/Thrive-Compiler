@@ -1,10 +1,6 @@
-# -*- coding: utf-8 -*-
-# @Author: Macsnow
-# @Date:   2017-04-12 23:04:21
-# @Last Modified by:   Macsnow
-# @Last Modified time: 2017-04-12 23:05:01
-
-
+"""
+this module contains thrilang compiler's exception.
+"""
 class ParseException(Exception):
     """
     raise when detect an invalid token.
@@ -15,5 +11,12 @@ class ParseException(Exception):
 class InvalidTokenException(Exception):
     """
     raise when detect an invalid symbol.
+    """
+    pass
+
+
+class TransformException(Exception):
+    """
+    raise when detect an invalid node.
     """
     pass

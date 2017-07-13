@@ -1122,6 +1122,7 @@ class ParseUnaryExp(ParseNode):
     parse unary expression.
     """
 
+    # TODO: fix semantic error.
     @classmethod
     def parse(cls, token_source: TokenSource):
         """parse token source to recursively construct a node."""
@@ -1133,6 +1134,9 @@ class ParseUnaryExp(ParseNode):
             node.child.append(ParsePostfixExp.parse(token_source))
         elif token_source.peek(1).value in ('+', '-', '!'):
             node.child.append(ParseUnaryOperator.parse(token_source))
+        else:
+            raise ParseException("at %s, expect ID, unary operator or const value." %
+                                    (token_source.peek(1).cursor))
 
         return node
 

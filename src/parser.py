@@ -1136,7 +1136,7 @@ class ParseUnaryExp(ParseNode):
             node.child.append(ParseUnaryOperator.parse(token_source))
         else:
             raise ParseException("at %s, expect ID, unary operator or const value." %
-                                    (token_source.peek(1).cursor))
+                                 (token_source.peek(1).cursor))
 
         return node
 
@@ -1232,8 +1232,14 @@ class ParsePrimaryExp(ParseNode):
     @classmethod
     def parse(cls, token_source: TokenSource):
         """parse token source to recursively construct a node."""
-        if token_source.peek(1).type in ('ID', 'VAL') or token_source.peek(1).value == '(':
+        if token_source.peek(1).type in ('ID', 'VAL'):
             return cls(token_source.get())
+        elif token_source.peek(1).value == '(':
+            node = cls("bracket expression")
+            node.child.append(ParseToken.parse(token_source))
+            node.child.append(ParseExpression.parse(token_source))
+            node.child.append(ParseToken.parse(token_source))
+            return node
         else:
             raise ParseException(
                 "at %s, expect id, const value, string or '('" % (token_source.peek(1).cursor))

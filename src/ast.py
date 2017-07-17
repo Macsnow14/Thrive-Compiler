@@ -3,6 +3,7 @@ transform a concrete syntax tree(CST) to a abstract syntax tree(AST)
 
 [AST structure form](http://www.cs.xu.edu/csci310/09s/ast.html)
 """
+# NOTE: semantic analyze by travel ast.
 
 from .parser import ParseNode
 from .token import Token
@@ -243,13 +244,24 @@ class Expression(ParseNode):
 
     @classmethod
     def transform(cls, cst_node):
-        pass
+        ast_node = None
+
+        if len(cst_node) > 1:
+            ast_node = cls(cst_node.child.pop(1).symbol)
+            ast_node.child.append(AsignmentExp.transform(cst_node.child.pop(0)))
+            ast_node.child.append(Expression.transform(cst_node))
+        else:
+            return AsignmentExp.transform(cst_node.child[0])
+
+        return ast_node
 
 
 class AsignmentExp(ParseNode):
 
     @classmethod
     def transform(cls, cst_node):
+        ast_node = None
+
         if len(cst_node.child) > 1:
             if cst_node.child[1].symbol.value == '=':
                 ast_node = cls(cst_node.child.pop(1).symbol)
@@ -271,6 +283,8 @@ class LogicalOrExp(ParseNode):
 
     @classmethod
     def transform(cls, cst_node):
+        ast_node = None
+
         if len(cst_node.child) > 1:
             ast_node = cls(cst_node.child.pop(1).symbol)
             ast_node.child.append(LogicalAndExp.transform(cst_node.child.pop(0)))
@@ -285,6 +299,8 @@ class LogicalAndExp(ParseNode):
 
     @classmethod
     def transform(cls, cst_node):
+        ast_node = None
+
         if len(cst_node.child) > 1:
             ast_node = cls(cst_node.child.pop(1).symbol)
             ast_node.child.append(EqualityExp.transform(cst_node.child.pop(0)))
@@ -299,6 +315,8 @@ class EqualityExp(ParseNode):
 
     @classmethod
     def transform(cls, cst_node):
+        ast_node = None
+
         if len(cst_node.child) > 1:
             ast_node = cls(cst_node.child.pop(1).symbol)
             ast_node.child.append(RelationalExp.transform(cst_node.child.pop(0)))
@@ -313,6 +331,8 @@ class RelationalExp(ParseNode):
 
     @classmethod
     def transform(cls, cst_node):
+        ast_node = None
+
         if len(cst_node.child) > 1:
             ast_node = cls(cst_node.child.pop(1).symbol)
             ast_node.child.append(AdditiveExp.transform(cst_node.child.pop(0)))
@@ -327,6 +347,8 @@ class AdditiveExp(ParseNode):
 
     @classmethod
     def transform(cls, cst_node):
+        ast_node = None
+
         if len(cst_node.child) > 1:
             ast_node = cls(cst_node.child.pop(1).symbol)
             ast_node.child.append(MultExp.transform(cst_node.child.pop(0)))
@@ -341,6 +363,8 @@ class MultExp(ParseNode):
 
     @classmethod
     def transform(cls, cst_node):
+        ast_node = None
+
         if len(cst_node.child) > 1:
             ast_node = cls(cst_node.child.pop(1).symbol)
             ast_node.child.append(CastExp.transform(cst_node.child.pop(0)))
@@ -355,7 +379,9 @@ class CastExp(ParseNode):
 
     @classmethod
     def transform(cls, cst_node):
-        if isinstance(cst_node.child[0], Token) and  cst_node.child[0].symbol.value == '(':
+        ast_node = None
+
+        if isinstance(cst_node.child[0].symbol, Token) and cst_node.child[0].symbol.value == '(':
             ast_node = cls(cst_node.child.pop(1).symbol)
             cst_node.child.pop(0)
             cst_node.child.pop(0)
@@ -368,7 +394,10 @@ class UnaryExp(ParseNode):
 
     @classmethod
     def transform(cls, cst_node):
-        if isinstance(cst_node.child[0], Token) and  cst_node.child[0].symbol.value in ('++', '--'):
+        ast_node = None
+
+        if isinstance(cst_node.child[0].symbol, Token) and cst_node.child[0].symbol.value in ('++', '--'):
+            cst_node.child[0].symbol.value += "_pre"
             ast_node = cls(cst_node.child[0].symbol)
             if cst_node.child[1].symbol.value in ('+', '-', '!'):
                 raise TransformException("semantic error")
@@ -388,11 +417,48 @@ class PostfixExp(ParseNode):
 
     @classmethod
     def transform(cls, cst_node):
-        pass
+        ast_node = None
+
+        if len(cst_node.child) > 1:
+            if isinstance(cst_node.child[1].symbol, Token) and cst_node.child[1].symbol.value in ('++', '--'):
+                cst_node.child[1].symbol.value += "_post"
+                ast_node = cls(cst_node.child[1].symbol)
+                ast_node.child.append(PrimaryExp.transform(cst_node.child[0]))
+            elif isinstance(cst_node.child[1].symbol, Token) and cst_node.child[1].symbol.value == "(":
+                ast_node = cls("call")
+                if isinstance(cst_node.child[2].symbol, str) and cst_node.child[2].symbol == "argument expression":
+                    ast_node.child.append(ArgumentExpList.transform(cst_node.child[2]))
+                ast_node.child.append(PrimaryExp.transform(cst_node.child[0]))
+            elif isinstance(cst_node.child[1].symbol, Token) and cst_node.child[1].symbol.value == "[":
+                ast_node = cls("array deref")
+                cst_node.child.pop(-1)
+                ast_node.child.append(Expression.transform(cst_node.child.pop(-1)))
+                cst_node.child.pop(-1)
+                ast_node.child.append(PostfixExp.transform(cst_node))
+
+        else:
+            return PrimaryExp.transform(cst_node.child[0])
+
+        return ast_node
 
 
 class PrimaryExp(ParseNode):
 
     @classmethod
     def transform(cls, cst_node):
-        pass
+        if isinstance(cst_node.symbol, str) and cst_node.symbol == "bracket expression":
+            return Expression.transform(cst_node.child[1])
+        else:
+            return cls(cst_node.symbol)
+
+class ArgumentExpList(ParseNode):
+
+    @classmethod
+    def transform(cls, cst_node):
+        ast_node = cls("argument expression")
+
+        for node in cst_node.child:
+            if not isinstance(cst_node.symbol, Token):
+                ast_node.child.append(AsignmentExp.transform(node))
+
+        return ast_node

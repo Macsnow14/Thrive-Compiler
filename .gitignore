@@ -93,3 +93,5 @@ ENV/
 
 # project
 BNF
+*.dot
+*.tl

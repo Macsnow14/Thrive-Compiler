@@ -12,21 +12,13 @@ from .exceptions import ParseException
 # TODO: add judgement static method to each class.
 
 
-def parse_dict(parse_node):
-    """
-    parse AST to dict obj.
-    """
-    return {'symbol': parse_node.token if isinstance(parse_node.token, str) else parse_node.token.value,
-            'child': [parse_dict(node) for node in parse_node.child if parse_node.child]}
-
-
 class ParseNode(object):
     """
     Abstract Syntex Tree base class
     """
 
-    def __init__(self, token: Token or str):
-        self.token: Token = token
+    def __init__(self, symbol: Token or str):
+        self.symbol: Token or str = symbol
         self.child: List[ParseNode] = list()
 
     def __str__(self):
@@ -37,7 +29,7 @@ class ParseNode(object):
         """
         parse AST to dict obj.
         """
-        return {'symbol': parse_node.token if isinstance(parse_node.token, str) else parse_node.token.value,
+        return {'symbol': parse_node.symbol if isinstance(parse_node.symbol, str) else parse_node.symbol.value,
                 'child': [ParseNode.parse_dict(node) for node in parse_node.child if parse_node.child]}
 
 

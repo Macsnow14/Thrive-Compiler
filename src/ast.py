@@ -22,7 +22,7 @@ class SourceRoot(ParseNode):
         else:
             raise TransformException("expect a translation Unit node as the root of AST.")
 
-        return cst_node
+        return ast_node
 
 
 class ExternalDecl(ParseNode):
@@ -37,7 +37,7 @@ class ExternalDecl(ParseNode):
         else:
             ast_node.child.append(FunctionDefinition.transform(cst_node.child[1]))
 
-        return cst_node
+        return ast_node
 
 
 class InitDeclaratorList(ParseNode):
@@ -49,10 +49,19 @@ class InitDeclaratorList(ParseNode):
         for node in cst_node.child:
             if len(node.child) != 1:
                 ast_node.child.append(AsignmentExp.transform(node))
+                # TODO: adapt class:`AsignmentExp`
             else:
-                ast_node.child.append(node.child[0])
+                ast_node.child.append(Declarator.transform(node))
 
         return ast_node
+
+
+class Declarator(ParseNode):
+
+    @classmethod
+    def transform(cls, cst_node):
+        pass
+        # TODO: finish this
 
 
 class FunctionDefinition(ParseNode):
@@ -61,8 +70,8 @@ class FunctionDefinition(ParseNode):
     def transform(cls, cst_node):
         ast_node = cls("function definition")
 
-        ast_node.child.append(cst_node.child[0])
-        for node in ast_node.child[1:]:
+        # ast_node.child.append(cst_node.child[0])
+        for node in cst_node.child[1:]:
             if node.symbol == "param list":
                 ast_node.child.append(ParamList.transform(node))
             elif node.symbol == "compound statement":

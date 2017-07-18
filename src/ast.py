@@ -285,11 +285,12 @@ class IterationStat(ParseNode):
 class JumpStat(ParseNode):
 
     # TODO: Do I need check if there are semantic error.
+    # FIXME: error detected.
     @classmethod
     def transform(cls, cst_node):
         ast_node = cls(cst_node.child[0].symbol)
-        if isinstance(cst_node.child[1].symbol, str) and cst_node.child[1] == "expression":
-            ast_node.child.append(Expression.transform(ast_node.child[1]))
+        if isinstance(cst_node.child[1].symbol, str) and cst_node.child[1].symbol == "expression":
+            ast_node.child.append(Expression.transform(cst_node.child[1]))
 
         return ast_node
 

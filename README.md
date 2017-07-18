@@ -62,6 +62,6 @@ want to know more? see the features list below.
 - [ ] visualize.
     - [x] concrete syntax tree.
 
-    - [ ] abstract syntax tree.
+    - [x] abstract syntax tree.
 
 - [ ] parser generator.

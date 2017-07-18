@@ -344,20 +344,19 @@ class ParseParamDecl(ParseNode):
                             | type_spec
                             ;
     EBNF:
-    param_decl              : type_spec { declarator }
+    param_decl              : type_spec [ declarator ]
                             ;
 
     parse param decl.
     """
 
-    # FIXME: EBNF is a wrong one.
     @classmethod
     def parse(cls, token_source: TokenSource):
         """parse token source to recursively construct a node."""
         node = cls("param decl")
 
         node.child.append(ParseToken.parse(token_source))
-        while token_source.peek(1).type == 'ID':
+        if token_source.peek(1).type == 'ID':
             node.child.append(ParseDeclarator.parse(token_source))
 
         return node
@@ -954,7 +953,7 @@ class ParseLogicalAndExp(ParseNode):
     @classmethod
     def parse(cls, token_source: TokenSource):
         """parse token source to recursively construct a node."""
-        node = cls("logical andr expression")
+        node = cls("logical and expression")
 
         node.child.append(ParseEqualityExp.parse(token_source))
         while token_source.peek(1).value == '&&':

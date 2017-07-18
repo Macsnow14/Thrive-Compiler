@@ -23,7 +23,5 @@ class TestParser:
         self.cst = ParseTranslationUnit.parse(token_source)
 
     def test_transform(self):
-        # ast = SourceRoot.transform(self.cst)
-        # TODO: test after finished
-        # print(ast)
-        pass
+        ast = SourceRoot.transform(self.cst)
+        print(ast)

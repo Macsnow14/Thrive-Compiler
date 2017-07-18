@@ -1,9 +1,12 @@
 """
-transform a concrete syntax tree(CST) to a abstract syntax tree(AST)
+Transform a concrete syntax tree(CST) to a abstract syntax tree(AST)
+Base assumption:
+    CST is valid.
 
 [AST structure form](http://www.cs.xu.edu/csci310/09s/ast.html)
 """
 # NOTE: semantic analyze by travel ast.
+# TODO: make each kind of node unique.
 
 from .parser import ParseNode
 from .token import Token
@@ -31,11 +34,10 @@ class ExternalDecl(ParseNode):
     def transform(cls, cst_node):
         ast_node = cls("external declaration")
 
-        ast_node.child.append(cst_node.child[0])
         if cst_node.child[1].symbol == "init declarator list":
-            ast_node.child.append(InitDeclaratorList.transform(cst_node.child[1]))
+            ast_node.child.append(InitDeclaratorList.transform(cst_node.child[0], cst_node.child[1]))
         else:
-            ast_node.child.append(FunctionDefinition.transform(cst_node.child[1]))
+            ast_node.child.append(FunctionDefinition.transform(cst_node.child[0], cst_node.child[1]))
 
         return ast_node
 
@@ -43,39 +45,83 @@ class ExternalDecl(ParseNode):
 class InitDeclaratorList(ParseNode):
 
     @classmethod
-    def transform(cls, cst_node):
+    def transform(cls, type_spec, cst_node):
         ast_node = cls("init declarator list")
 
+        ast_node.child.append(type_spec)
         for node in cst_node.child:
-            if len(node.child) != 1:
-                ast_node.child.append(AsignmentExp.transform(node))
-                # TODO: adapt class:`AsignmentExp`
-            else:
-                ast_node.child.append(Declarator.transform(node))
+            if node.symbol == "init declarator":
+                ast_node.child.append(InitDeclarator.transform(node))
 
         return ast_node
 
 
-class Declarator(ParseNode):
+class InitDeclarator(ParseNode):
 
     @classmethod
     def transform(cls, cst_node):
-        pass
-        # TODO: finish this
+        if len(cst_node.child) > 1:
+            ast_node = cls(cst_node.child[1].symbol)
+            ast_node.child.append(VarDeclarator.transform(cst_node.child[0]))
+            ast_node.child.append(Initializer.transform(cst_node.child[2]))
+            return ast_node
+        else:
+            return VarDeclarator.transform(cst_node.child[0])
+
+
+class Initializer(ParseNode):
+
+    @classmethod
+    def transform(cls, cst_node):
+        if isinstance(cst_node.child[0].symbol, Token) and cst_node.child[0].symbol == '{':
+            return TransformException("array init are not support yet.")
+        else:
+            return AsignmentExp.transform(cst_node.child[0])
+
+
+# class InitializerList(ParseNode):
+
+#     @classmethod
+#     def transform(cls, cst_node):
+#         pass
+
+
+class VarDeclarator(ParseNode):
+
+    @classmethod
+    def transform(cls, cst_node):
+        if len(cst_node.child) > 1:
+            ast_node = None
+            if isinstance(cst_node.child[1].symbol, Token) and cst_node.child[1].symbol.value == "[":
+                ast_node = cls("array decl")
+                cst_node.child.pop(-1)
+                ast_node.child.append(LogicalOrExp.transform(cst_node.child.pop(-1)))
+                cst_node.child.pop(-1)
+                ast_node.child.append(VarDeclarator.transform(cst_node))
+            else:
+                ast_node = cls("function decl")
+                ast_node.child.append(cls(cst_node.child[0].symbol))
+                if len(cst_node.child) > 3:
+                    cst_node.child.pop(0)
+                    cst_node.child.pop(0)
+                    cst_node.child.pop(-1)
+                    ast_node.child.append(ParamList.transform(cst_node.child[0]))
+            
+            return ast_node
+                
+        else:
+            return cls(cst_node.child[0].symbol)
 
 
 class FunctionDefinition(ParseNode):
 
     @classmethod
-    def transform(cls, cst_node):
+    def transform(cls, type_spec, cst_node):
         ast_node = cls("function definition")
 
-        # ast_node.child.append(cst_node.child[0])
-        for node in cst_node.child[1:]:
-            if node.symbol == "param list":
-                ast_node.child.append(ParamList.transform(node))
-            elif node.symbol == "compound statement":
-                ast_node.child.append(CompoundStat.transform(node))
+        ast_node.child.append(type_spec)
+        ast_node.child.append(VarDeclarator.transform(cst_node.child[0]))
+        ast_node.child.append(CompoundStat.transform(cst_node.child[1]))
 
         return ast_node
 
@@ -86,7 +132,7 @@ class ParamList(ParseNode):
     def transform(cls, cst_node):
         ast_node = cls("param list")
         
-        for node in ast_node.child:
+        for node in cst_node.child:
             if node.symbol == "param decl":
                 ast_node.child.append(ParamDecl.transform(node))
 
@@ -127,8 +173,7 @@ class LocalDeclList(ParseNode):
         ast_node = cls("declaration list")
 
         for node in cst_node.child:
-            ast_node.child.append(node.child[0])
-            ast_node.child.append(InitDeclaratorList.transform(node.child[1]))
+            ast_node.child.append(InitDeclaratorList.transform(node.child[0], node.child[1]))
 
         return ast_node
 
@@ -200,7 +245,7 @@ class SelectionStat(ParseNode):
 
         if isinstance(cst_node.child[0].symbol, Token) and cst_node.child[0].symbol.value == "if":
             ast_node = cls("if then else")
-            for node in cst_node[1:]:
+            for node in cst_node.child[1:]:
                 if node.symbol == "expression":
                     ast_node.child.append(Expression.transform(node))
                 elif node.symbol == "statement":
@@ -228,7 +273,7 @@ class IterationStat(ParseNode):
             ast_node = cls("do while")
         else:
             ast_node = cls("while do")
-        for node in cst_node[1:]:
+        for node in cst_node.child[1:]:
             if node.symbol == "expression":
                 ast_node.child.append(Expression.transform(node))
             elif node.symbol == "statement":
@@ -255,7 +300,7 @@ class Expression(ParseNode):
     def transform(cls, cst_node):
         ast_node = None
 
-        if len(cst_node) > 1:
+        if len(cst_node.child) > 1:
             ast_node = cls(cst_node.child.pop(1).symbol)
             ast_node.child.append(AsignmentExp.transform(cst_node.child.pop(0)))
             ast_node.child.append(Expression.transform(cst_node))
@@ -297,9 +342,9 @@ class LogicalOrExp(ParseNode):
         if len(cst_node.child) > 1:
             ast_node = cls(cst_node.child.pop(1).symbol)
             ast_node.child.append(LogicalAndExp.transform(cst_node.child.pop(0)))
-            ast_node.child.append(LogicalAndExp.transform(cst_node))
+            ast_node.child.append(LogicalOrExp.transform(cst_node))
         else:
-            return LogicalAndExp.transform(cst_node)
+            return LogicalAndExp.transform(cst_node.child[0])
 
         return ast_node
 
@@ -313,9 +358,9 @@ class LogicalAndExp(ParseNode):
         if len(cst_node.child) > 1:
             ast_node = cls(cst_node.child.pop(1).symbol)
             ast_node.child.append(EqualityExp.transform(cst_node.child.pop(0)))
-            ast_node.child.append(EqualityExp.transform(cst_node))
+            ast_node.child.append(LogicalAndExp.transform(cst_node))
         else:
-            return EqualityExp.transform(cst_node)
+            return EqualityExp.transform(cst_node.child[0])
 
         return ast_node
 
@@ -329,9 +374,9 @@ class EqualityExp(ParseNode):
         if len(cst_node.child) > 1:
             ast_node = cls(cst_node.child.pop(1).symbol)
             ast_node.child.append(RelationalExp.transform(cst_node.child.pop(0)))
-            ast_node.child.append(RelationalExp.transform(cst_node))
+            ast_node.child.append(EqualityExp.transform(cst_node))
         else:
-            return RelationalExp.transform(cst_node)
+            return RelationalExp.transform(cst_node.child[0])
 
         return ast_node
 
@@ -345,9 +390,9 @@ class RelationalExp(ParseNode):
         if len(cst_node.child) > 1:
             ast_node = cls(cst_node.child.pop(1).symbol)
             ast_node.child.append(AdditiveExp.transform(cst_node.child.pop(0)))
-            ast_node.child.append(AdditiveExp.transform(cst_node))
+            ast_node.child.append(RelationalExp.transform(cst_node))
         else:
-            return AdditiveExp.transform(cst_node)
+            return AdditiveExp.transform(cst_node.child[0])
 
         return ast_node
 
@@ -361,9 +406,9 @@ class AdditiveExp(ParseNode):
         if len(cst_node.child) > 1:
             ast_node = cls(cst_node.child.pop(1).symbol)
             ast_node.child.append(MultExp.transform(cst_node.child.pop(0)))
-            ast_node.child.append(MultExp.transform(cst_node))
+            ast_node.child.append(AdditiveExp.transform(cst_node))
         else:
-            return MultExp.transform(cst_node)
+            return MultExp.transform(cst_node.child[0])
 
         return ast_node
 
@@ -377,9 +422,9 @@ class MultExp(ParseNode):
         if len(cst_node.child) > 1:
             ast_node = cls(cst_node.child.pop(1).symbol)
             ast_node.child.append(CastExp.transform(cst_node.child.pop(0)))
-            ast_node.child.append(CastExp.transform(cst_node))
+            ast_node.child.append(MultExp.transform(cst_node))
         else:
-            return CastExp.transform(cst_node)
+            return CastExp.transform(cst_node.child[0])
 
         return ast_node
 
@@ -396,7 +441,7 @@ class CastExp(ParseNode):
             cst_node.child.pop(0)
             ast_node.child.append(UnaryExp.transform(cst_node))
         else:
-            return UnaryExp.transform(cst_node)
+            return UnaryExp.transform(cst_node.child[0])
 
 
 class UnaryExp(ParseNode):
@@ -413,11 +458,11 @@ class UnaryExp(ParseNode):
             else:
                 ast_node.child.append(PostfixExp.transform(cst_node.child[1]))
         else:
-            if cst_node.child[0].symbol.value in ('+', '-', '!'):
+            if isinstance(cst_node.child[0].symbol, Token) and cst_node.child[0].symbol.value in ('+', '-', '!'):
                 ast_node = cls(cst_node.child[0].symbol)
-                ast_node.child.append(cst_node.child[1].symbol.value)
+                ast_node.child.append(CastExp.transform(cst_node.child[0]))
             else:
-                return CastExp.transform(cst_node.child[0])
+                return PostfixExp.transform(cst_node.child[0])
 
         return ast_node
 
@@ -426,29 +471,28 @@ class PostfixExp(ParseNode):
 
     @classmethod
     def transform(cls, cst_node):
-        ast_node = None
 
         if len(cst_node.child) > 1:
+            ast_node = None
             if isinstance(cst_node.child[1].symbol, Token) and cst_node.child[1].symbol.value in ('++', '--'):
                 cst_node.child[1].symbol.value += "_post"
                 ast_node = cls(cst_node.child[1].symbol)
                 ast_node.child.append(PrimaryExp.transform(cst_node.child[0]))
             elif isinstance(cst_node.child[1].symbol, Token) and cst_node.child[1].symbol.value == "(":
                 ast_node = cls("call")
+                ast_node.child.append(PrimaryExp.transform(cst_node.child[0]))
                 if isinstance(cst_node.child[2].symbol, str) and cst_node.child[2].symbol == "argument expression":
                     ast_node.child.append(ArgumentExpList.transform(cst_node.child[2]))
-                ast_node.child.append(PrimaryExp.transform(cst_node.child[0]))
-            elif isinstance(cst_node.child[1].symbol, Token) and cst_node.child[1].symbol.value == "[":
+            else:
                 ast_node = cls("array deref")
                 cst_node.child.pop(-1)
                 ast_node.child.append(Expression.transform(cst_node.child.pop(-1)))
                 cst_node.child.pop(-1)
                 ast_node.child.append(PostfixExp.transform(cst_node))
+            return ast_node
 
         else:
             return PrimaryExp.transform(cst_node.child[0])
-
-        return ast_node
 
 
 class PrimaryExp(ParseNode):

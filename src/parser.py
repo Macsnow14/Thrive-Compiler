@@ -4,20 +4,12 @@ paser to generate quaternary.
 Recursive descent parsing.
 """
 import json
-from typing import List, Set
-from functools import wraps
-from .token import Token
+from typing import List
+from .token import Token, TokenSource
 from .lexer import var_types
 from .exceptions import ParseException
+
 # TODO: add judgement static method to each class.
-
-
-def parse_dict(parseNode):
-    """
-    parse AST to dict obj.
-    """
-    return {'symbol': parseNode.token if type(parseNode.token) is str else parseNode.token.value,
-            'child': [parse_dict(node) for node in parseNode.child if parseNode.child]}
 
 
 class ParseNode(object):
@@ -25,16 +17,20 @@ class ParseNode(object):
     Abstract Syntex Tree base class
     """
 
-    def __init__(self, token: Token or str):
-        self.token: Token = token
+    def __init__(self, symbol: Token or str):
+        self.symbol: Token or str = symbol
         self.child: List[ParseNode] = list()
 
-    @classmethod
-    def parse(self, token_source):
-        raise NotImplementedError
-
     def __str__(self):
-        return json.dumps(parse_dict(self), indent=2)
+        return json.dumps(ParseNode.parse_dict(self), indent=2)
+
+    @staticmethod
+    def parse_dict(parse_node):
+        """
+        parse AST to dict obj.
+        """
+        return {'symbol': parse_node.symbol if isinstance(parse_node.symbol, str) else parse_node.symbol.value,
+                'child': [ParseNode.parse_dict(node) for node in parse_node.child if parse_node.child]}
 
 
 class ParseToken(ParseNode):
@@ -43,11 +39,12 @@ class ParseToken(ParseNode):
     """
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         return cls(token_source.get())
 
 
-class ParsetranslationUnit(ParseNode):
+class ParseTranslationUnit(ParseNode):
     """
     BNF:
     translation_unit    : external_decl
@@ -63,7 +60,8 @@ class ParsetranslationUnit(ParseNode):
     """
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls('translation Unit')
 
         node.child.append(ParseExternalDecl.parse(token_source))
@@ -86,21 +84,19 @@ class ParseExternalDecl(ParseNode):
     parse external declaration.
     """
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls('external declaration')
 
         node.child.append(ParseTypeSpec.parse(token_source))
         if token_source.peek(1).type == 'ID':
-            if token_source.peek(2).value == (';' or '[' or ','):
-                node.child.append(
-                    ParseInitDeclaratorList.parse(token_source))
-                node.child.append(ParseToken.parse(token_source))
-            elif token_source.peek(2).value == '(':
+            if token_source.peek(2).value == '(':
                 node.child.append(
                     ParseFunctionDefinition.parse(token_source))
             else:
-                raise ParseException("%s cannot be a external declare." % (
-                    token_source.peek(1).value))
+                node.child.append(
+                    ParseInitDeclaratorList.parse(token_source))
+                node.child.append(ParseToken.parse(token_source))
 
         return node
 
@@ -118,8 +114,9 @@ class ParseFunctionDefinition(ParseNode):
     """
 
     @classmethod
-    def parse(cls, token_source):
-        node = cls('function definition')
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
+        node = cls("function definition")
 
         node.child.append(ParseDeclarator.parse(token_source))
         node.child.append(ParseCompoundStat.parse(token_source))
@@ -140,7 +137,8 @@ class ParseDecl(ParseNode):
     """
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls('declaration')
 
         node.child.append(ParseTypeSpec.parse(token_source))
@@ -148,7 +146,8 @@ class ParseDecl(ParseNode):
         if token_source.peek(1).value == ';':
             node.child.append(ParseToken.parse(token_source))
         else:
-            raise ParseException("declaration must end up with ';'.")
+            raise ParseException("at %s, declaration must end up with ';'." % (
+                token_source.peek(1).cursor))
 
         return node
 
@@ -167,7 +166,8 @@ class ParseDeclList(ParseNode):
     """
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls("declaration list")
 
         node.child.append(ParseDecl.parse(token_source))
@@ -188,13 +188,19 @@ class ParseTypeSpec(ParseNode):
 
     parse type spec.
     """
+    @staticmethod
+    def is_type_spec(token_source):
+        return token_source.peek(1).value in var_types
 
     @classmethod
-    def parse(cls, token_source):
-        if token_source.peek(1).value in var_types:
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
+        if cls.is_type_spec(token_source):
             return cls(token_source.get())
         else:
-            raise ParseException('%s is not a var type, expect var type' % (token_source.peek(1).value))
+            raise ParseException('at %s, %s is not a var type, expect var type' % (
+                token_source.peek(1).cursor,
+                token_source.peek(1).value))
 
 
 class ParseInitDeclaratorList(ParseNode):
@@ -211,7 +217,8 @@ class ParseInitDeclaratorList(ParseNode):
     """
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls("init declarator list")
 
         node.child.append(ParseInitDeclarator.parse(token_source))
@@ -236,7 +243,8 @@ class ParseInitDeclarator(ParseNode):
     """
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls("init declarator")
 
         node.child.append(ParseDeclarator.parse(token_source))
@@ -258,14 +266,18 @@ class ParseDeclarator(ParseNode):
                             | declarator '('		')'
                             ;
     EBNF:
-    declarator              : id { '[' [ logical_or_exp ] ']' |  '(' [ param_list ] ')' | '(' [ id_list ] ')' }
+    declarator              : id { '[' [ logical_or_exp ] ']' |
+                                   '(' [ param_list ] ')' |
+                                   '(' [ id_list ] ')' }
                             ;
 
     parse declarator.
     """
 
+    # TODO: cat function declaration down.
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls("declarator")
 
         if token_source.peek(1).type == 'ID':
@@ -274,11 +286,13 @@ class ParseDeclarator(ParseNode):
                 if token_source.peek(1).value == '[':
                     node.child.append(ParseToken.parse(token_source))
                     if token_source.peek(1).type in ('ID', 'VAL') or token_source.peek(1).value in ('(', '+', '-', '!', '++', '--'):
-                        node.child.append(ParseLogicalOrExp.parse(token_source))
+                        node.child.append(
+                            ParseLogicalOrExp.parse(token_source))
                     if token_source.peek(1).value == ']':
                         node.child.append(ParseToken.parse(token_source))
                     else:
-                        raise ParseException("expect ']'")
+                        raise ParseException("at %s, expect ']'" % (
+                            token_source.peek(1).cursor))
                 elif token_source.peek(1).value == '(':
                     node.child.append(ParseToken.parse(token_source))
                     if token_source.peek(1).value in var_types:
@@ -288,9 +302,11 @@ class ParseDeclarator(ParseNode):
                     if token_source.peek(1).value == ')':
                         node.child.append(ParseToken.parse(token_source))
                     else:
-                        raise ParseException("'%s' is not ')', expect ')'" % (token_source.peek(1).value))
+                        raise ParseException("'%s' is not ')', expect ')'" % (
+                            token_source.peek(1).value))
         else:
-            raise ParseException("'%s' is not ID, expect ID." % (token_source.peek(1).value))
+            raise ParseException("at %s, '%s' is not ID, expect ID." % (token_source.peek(1).cursor,
+                                                                        token_source.peek(1).value))
 
         return node
 
@@ -309,7 +325,8 @@ class ParseParamList(ParseNode):
     """
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls("param list")
 
         node.child.append(ParseParamDecl.parse(token_source))
@@ -327,18 +344,19 @@ class ParseParamDecl(ParseNode):
                             | type_spec
                             ;
     EBNF:
-    param_decl              : type_spec { declarator }
+    param_decl              : type_spec [ declarator ]
                             ;
 
     parse param decl.
     """
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls("param decl")
 
         node.child.append(ParseToken.parse(token_source))
-        while token_source.peek(1).type == 'ID':
+        if token_source.peek(1).type == 'ID':
             node.child.append(ParseDeclarator.parse(token_source))
 
         return node
@@ -358,7 +376,8 @@ class ParseIdList(ParseNode):
     """
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls("Id list")
 
         if token_source.peek(1).type == 'ID':
@@ -368,9 +387,11 @@ class ParseIdList(ParseNode):
                 if token_source.peek(1).type == 'ID':
                     node.child.append(ParseToken.parse(token_source))
                 else:
-                    raise ParseException("expect ID")
+                    raise ParseException("at %s, expect ID" %
+                                         (token_source.peek(1).cursor))
         else:
-            raise ParseException("expect ID")
+            raise ParseException("at %s, expect ID" %
+                                 (token_source.peek(1).cursor))
 
         return node
 
@@ -390,7 +411,8 @@ class ParseInitializer(ParseNode):
     """
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls("initializer")
 
         if token_source.peek(1).value == '{':
@@ -419,7 +441,8 @@ class ParseInitializerList(ParseNode):
     """
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls("initializer list")
 
         node.child.append(ParseInitializer.parse(token_source))
@@ -479,7 +502,8 @@ class ParseStatement(ParseNode):
         return token_source.peek(1).value in ('continue', 'break', 'return')
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls("statement")
 
         if cls.is_labeled_stat(token_source):
@@ -495,7 +519,8 @@ class ParseStatement(ParseNode):
         elif cls.is_jump_stat(token_source):
             node.child.append(ParseJumpStat.parse(token_source))
         else:
-            raise ParseException("expect Statement")
+            raise ParseException("at %s, expect Statement" %
+                                 (token_source.peek(1).cursor))
         # NOTE: maybe using a loop would avoid these ugly selection statements?
         return node
 
@@ -516,7 +541,8 @@ class ParseLabeledStat(ParseNode):
     """
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls("labeled statement")
 
         if token_source.peek(1).type == 'ID':
@@ -525,7 +551,8 @@ class ParseLabeledStat(ParseNode):
                 node.child.append(ParseToken.parse(token_source))
                 node.child.append(ParseStatement.parse(token_source))
             else:
-                raise ParseException("expect ':'")
+                raise ParseException("at %s, expect ':'" %
+                                     (token_source.peek(1).cursor))
         elif token_source.peek(1).value == 'case':
             node.child.append(ParseToken.parse(token_source))
             node.child.append(ParseLogicalOrExp.parse(token_source))
@@ -533,16 +560,19 @@ class ParseLabeledStat(ParseNode):
                 node.child.append(ParseToken.parse(token_source))
                 node.child.append(ParseStatement.parse(token_source))
             else:
-                raise ParseException("expect ':'")
+                raise ParseException("at %s, expect ':'" %
+                                     (token_source.peek(1).cursor))
         elif token_source.peek(1).value == 'default':
             node.child.append(ParseToken.parse(token_source))
             if token_source.peek(1).value == ':':
                 node.child.append(ParseToken.parse(token_source))
                 node.child.append(ParseStatement.parse(token_source))
             else:
-                raise ParseException("expect ':'")
+                raise ParseException("at %s, expect ':'" %
+                                     (token_source.peek(1).cursor))
         else:
-            raise ParseException("expect labeled statement element.")
+            raise ParseException("at %s, expect labeled statement element." % (
+                token_source.peek(1).cursor))
 
         return node
 
@@ -560,7 +590,8 @@ class ParseExpStat(ParseNode):
     """
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls("expression statement")
 
         if token_source.peek(1).type in ('ID', 'VAL') or token_source.peek(1).value in ('(', '+', '-', '!', '++', '--'):
@@ -568,7 +599,9 @@ class ParseExpStat(ParseNode):
         if token_source.peek(1).value == ';':
             node.child.append(ParseToken.parse(token_source))
         else:
-            raise ParseException("expect ';'")
+            raise ParseException("at %s, '%s' is not ';', expect ';'" % (
+                token_source.peek(1).cursor,
+                token_source.peek(1).value))
 
         return node
 
@@ -588,7 +621,8 @@ class ParseCompoundStat(ParseNode):
     """
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls("compound statement")
 
         if token_source.peek(1).value == '{':
@@ -600,9 +634,11 @@ class ParseCompoundStat(ParseNode):
             if token_source.peek(1).value == '}':
                 node.child.append(ParseToken.parse(token_source))
             else:
-                raise ParseException("expect '}'")
+                raise ParseException("at %s, expect '}'" %
+                                     (token_source.peek(1).cursor))
         else:
-            raise ParseException("expect '{'")
+            raise ParseException("at %s expect '{'" % (
+                token_source.peek(1).cursor))
 
         return node
 
@@ -620,7 +656,8 @@ class ParseStatList(ParseNode):
     """
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls("statement list")
 
         node.child.append(ParseStatement.parse(token_source))
@@ -645,7 +682,8 @@ class ParseSelectionStat(ParseNode):
     """
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls("selection statement")
 
         if token_source.peek(1).value == 'if':
@@ -660,9 +698,11 @@ class ParseSelectionStat(ParseNode):
                         node.child.append(ParseToken.parse(token_source))
                         node.child.append(ParseStatement.parse(token_source))
                 else:
-                    raise ParseException("expect ')'.")
+                    raise ParseException("at %s, expect ')'." %
+                                         (token_source.peek(1).cursor))
             else:
-                raise ParseException("expect '('.")
+                raise ParseException("at %s, expect '('." %
+                                     (token_source.peek(1).cursor))
         elif token_source.peek(1).value == 'switch':
             node.child.append(ParseToken.parse(token_source))
             if token_source.peek(1).value == '(':
@@ -672,11 +712,14 @@ class ParseSelectionStat(ParseNode):
                     node.child.append(ParseToken.parse(token_source))
                     node.child.append(ParseStatement.parse(token_source))
                 else:
-                    raise ParseException("expect ')'.")
+                    raise ParseException("at %s, expect ')'." %
+                                         (token_source.peek(1).cursor))
             else:
-                raise ParseException("expect '('.")
+                raise ParseException("at %s, expect '('." %
+                                     (token_source.peek(1).cursor))
         else:
-            raise ParseException("expect selection statement.")
+            raise ParseException("at %s, expect selection statement." % (
+                token_source.peek(1).cursor))
 
         return node
 
@@ -695,7 +738,8 @@ class ParseIterationStat(ParseNode):
     """
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls("iteration statement")
 
         if token_source.peek(1).value == 'while':
@@ -707,9 +751,11 @@ class ParseIterationStat(ParseNode):
                     node.child.append(ParseToken.parse(token_source))
                     node.child.append(ParseStatement.parse(token_source))
                 else:
-                    raise ParseException("expect ')'.")
+                    raise ParseException("at %s, expect ')'." %
+                                         (token_source.peek(1).cursor))
             else:
-                raise ParseException("expect '('.")
+                raise ParseException("at %s, expect '('." %
+                                     (token_source.peek(1).cursor))
         elif token_source.peek(1).value == 'do':
             node.child.append(ParseToken.parse(token_source))
             node.child.append(ParseStatement.parse(token_source))
@@ -723,15 +769,20 @@ class ParseIterationStat(ParseNode):
                         if token_source.peek(1).value == ';':
                             node.child.append(ParseToken.parse(token_source))
                         else:
-                            raise ParseException("expect ';'.")
+                            raise ParseException("at %s, expect ';'." % (
+                                token_source.peek(1).cursor))
                     else:
-                        raise ParseException("expect ')'.")
+                        raise ParseException("at %s, expect ')'." % (
+                            token_source.peek(1).cursor))
                 else:
-                    raise ParseException("expect '('.")
+                    raise ParseException(
+                        "at %s, expect '('." % (token_source.peek(1).cursor))
             else:
-                raise ParseException("expect 'while'.")
+                raise ParseException("at %s, expect 'while'." %
+                                     (token_source.peek(1).cursor))
         else:
-            raise ParseException("expect iteration statement.")
+            raise ParseException("at %s, expect iteration statement." % (
+                token_source.peek(1).cursor))
 
         return node
 
@@ -753,7 +804,8 @@ class ParseJumpStat(ParseNode):
     """
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls("jump statement")
 
         if token_source.peek(1).value == 'continue':
@@ -761,13 +813,15 @@ class ParseJumpStat(ParseNode):
             if token_source.peek(1).value == ';':
                 node.child.append(ParseToken.parse(token_source))
             else:
-                raise ParseException("expect ';'.")
+                raise ParseException("at %s, expect ';'." %
+                                     (token_source.peek(1).cursor))
         elif token_source.peek(1).value == 'break':
             node.child.append(ParseToken.parse(token_source))
             if token_source.peek(1).value == ';':
                 node.child.append(ParseToken.parse(token_source))
             else:
-                raise ParseException("expect ';'.")
+                raise ParseException("at %s, expect ';'." %
+                                     (token_source.peek(1).cursor))
         elif token_source.peek(1).value == 'return':
             node.child.append(ParseToken.parse(token_source))
             if token_source.peek(1).type in ('ID', 'VAL') or token_source.peek(1).value in ('(', '+', '-', '!', '++', '--'):
@@ -775,7 +829,9 @@ class ParseJumpStat(ParseNode):
             if token_source.peek(1).value == ';':
                 node.child.append(ParseToken.parse(token_source))
             else:
-                raise ParseException("'%s' is not ';', expect ';'" % (token_source.peek(1).value))
+                raise ParseException("at %s, '%s' is not ';', expect ';'" % (
+                    token_source.peek(1).cursor,
+                    token_source.peek(1).value))
 
         return node
 
@@ -791,9 +847,10 @@ class ParseExpression(ParseNode):
                             ;
     parse expression.
     """
-    
+
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls("expression")
 
         node.child.append(ParseAssignmentExp.parse(token_source))
@@ -817,10 +874,11 @@ class ParseAssignmentExp(ParseNode):
     """
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls("assignment expression")
 
-        while (token_source.peek(1).type in ('ID', 'VAL') or token_source.peek(1).value in ('(', '+', '-', '!', '++', '--')) and token_source.peek(2) in ('=', '*=', '/=', '+=', '-='):
+        while (token_source.peek(1).type in ('ID', 'VAL') or token_source.peek(1).value in ('(', '+', '-', '!', '++', '--')) and token_source.peek(2).value in ('=', '*=', '/=', '+=', '-='):
             node.child.append(ParseUnaryExp.parse(token_source))
             node.child.append(ParseAssignmentOperator.parse(token_source))
         node.child.append(ParseLogicalOrExp.parse(token_source))
@@ -841,14 +899,18 @@ class ParseAssignmentOperator(ParseNode):
 
     @staticmethod
     def is_assignment_operator(token_source):
+        """check if next token is a assignment operator"""
         return token_source.peek(1).value in ('=', '*=', '/=', '+=', '-=')
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         if cls.is_assignment_operator(token_source):
             return cls(token_source.get())
         else:
-            raise ParseException("'%s' is not an assignment operator, expect assignment operator" % (token_source.peek(1).value))
+            raise ParseException("at %s, '%s' is not an assignment operator, expect assignment operator" % (
+                token_source.peek(1).cursor,
+                token_source.peek(1).value))
 
 
 class ParseLogicalOrExp(ParseNode):
@@ -864,7 +926,8 @@ class ParseLogicalOrExp(ParseNode):
     """
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls("logical or expression")
 
         node.child.append(ParseLogicalAndExp.parse(token_source))
@@ -888,8 +951,9 @@ class ParseLogicalAndExp(ParseNode):
     """
 
     @classmethod
-    def parse(cls, token_source):
-        node = cls("logical andr expression")
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
+        node = cls("logical and expression")
 
         node.child.append(ParseEqualityExp.parse(token_source))
         while token_source.peek(1).value == '&&':
@@ -913,7 +977,8 @@ class ParseEqualityExp(ParseNode):
     """
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls("equality expression")
 
         node.child.append(ParseRelationalExp.parse(token_source))
@@ -940,7 +1005,8 @@ class ParseRelationalExp(ParseNode):
     """
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls("relational expression")
 
         node.child.append(ParseAdditiveExp.parse(token_source))
@@ -965,7 +1031,8 @@ class ParseAdditiveExp(ParseNode):
     """
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls("additive expression")
 
         node.child.append(ParseMultExp.parse(token_source))
@@ -990,7 +1057,8 @@ class ParseMultExp(ParseNode):
     """
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls("multiple expression")
 
         node.child.append(ParseCastExp.parse(token_source))
@@ -1014,7 +1082,8 @@ class ParseCastExp(ParseNode):
     """
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls("cast expression")
 
         while token_source.peek(1).value == '(':
@@ -1023,7 +1092,8 @@ class ParseCastExp(ParseNode):
             if token_source.peek(1).value == ')':
                 node.child.append(ParseToken.parse(token_source))
             else:
-                raise ParseException("expect ')'")
+                raise ParseException("at %s, expect ')'" %
+                                     (token_source.peek(1).cursor))
         node.child.append(ParseUnaryExp.parse(token_source))
 
         return node
@@ -1043,16 +1113,21 @@ class ParseUnaryExp(ParseNode):
     parse unary expression.
     """
 
+    # TODO: fix semantic error.
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls("unary expression")
-        
+
         while token_source.peek(1).value in ('++', '--'):
             node.child.append(ParseToken.parse(token_source))
-        if  token_source.peek(1).type in ('ID', 'VAL') or token_source.peek(1).value == '(':
+        if token_source.peek(1).type in ('ID', 'VAL') or token_source.peek(1).value == '(':
             node.child.append(ParsePostfixExp.parse(token_source))
         elif token_source.peek(1).value in ('+', '-', '!'):
-            node.child.append(ParseUnaryOperator.parse(token_source))            
+            node.child.append(ParseUnaryOperator.parse(token_source))
+        else:
+            raise ParseException("at %s, expect ID, unary operator or const value." %
+                                 (token_source.peek(1).cursor))
 
         return node
 
@@ -1069,11 +1144,13 @@ class ParseUnaryOperator(ParseNode):
     """
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         if token_source.peek(1).value in ('+', '-', '!'):
             return cls(token_source.get())
         else:
-            raise ParseException("expect unary Operator.")
+            raise ParseException("at %s, expect unary Operator." %
+                                 (token_source.peek(1).cursor))
 
 
 class ParsePostfixExp(ParseNode):
@@ -1087,13 +1164,17 @@ class ParsePostfixExp(ParseNode):
                             | postfix_exp '--'
                             ;
     EBNF:
-    postfix_exp             : primary_exp { '[' exp ']' | '(' [ argument_exp_list ] ')' | '++' | '--' }
+    postfix_exp             : primary_exp { '[' exp ']' |
+                                            '(' [ argument_exp_list ] ')' |
+                                            '++' |
+                                            '--' }
                             ;
     parse postfix expression.
     """
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls("postfix expression")
 
         node.child.append(ParsePrimaryExp.parse(token_source))
@@ -1103,7 +1184,8 @@ class ParsePostfixExp(ParseNode):
             if token_source.peek(1).value == ']':
                 node.child.append(ParseToken.parse(token_source))
             else:
-                raise ParseException("'%s' is not ')', expect ')'")
+                raise ParseException("at %s, '%s' is not ')', expect ')'" % (
+                    token_source.peek(1).cursor))
         elif token_source.peek(1).value == '(':
             node.child.append(ParseToken.parse(token_source))
             if token_source.peek(1).type in ('ID', 'VAL') or token_source.peek(1).value in ('+', '-', '!', '(', '++', '--'):
@@ -1111,7 +1193,8 @@ class ParsePostfixExp(ParseNode):
             if token_source.peek(1).value == ')':
                 node.child.append(ParseToken.parse(token_source))
             else:
-                raise ParseException("'%s' is not ')', expect ')'")
+                raise ParseException("at %s, '%s' is not ')', expect ')'" % (
+                    token_source.peek(1).cursor))
         elif token_source.peek(1).value == '++':
             node.child.append(ParseToken.parse(token_source))
         elif token_source.peek(1).value == '--':
@@ -1138,11 +1221,19 @@ class ParsePrimaryExp(ParseNode):
     """
 
     @classmethod
-    def parse(cls, token_source):
-        if token_source.peek(1).type in ('ID', 'VAL') or token_source.peek(1).value == '(':
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
+        if token_source.peek(1).type in ('ID', 'VAL'):
             return cls(token_source.get())
+        elif token_source.peek(1).value == '(':
+            node = cls("bracket expression")
+            node.child.append(ParseToken.parse(token_source))
+            node.child.append(ParseExpression.parse(token_source))
+            node.child.append(ParseToken.parse(token_source))
+            return node
         else:
-            raise ParseException("expect id, const value, string or '('")
+            raise ParseException(
+                "at %s, expect id, const value, string or '('" % (token_source.peek(1).cursor))
 
 
 class ParseArgumentExpList(ParseNode):
@@ -1158,11 +1249,13 @@ class ParseArgumentExpList(ParseNode):
     """
 
     @classmethod
-    def parse(cls, token_source):
+    def parse(cls, token_source: TokenSource):
+        """parse token source to recursively construct a node."""
         node = cls("argument expression")
 
         node.child.append(ParseAssignmentExp.parse(token_source))
         while token_source.peek(1).value == ',':
+            node.child.append(ParseToken.parse(token_source))
             node.child.append(ParseAssignmentExp.parse(token_source))
 
         return node
@@ -1186,5 +1279,5 @@ class ParseArgumentExpList(ParseNode):
 #     def __init__(self):
 #         super(ParseConst, self).__init__("const")
 
-#     def parse(self, token_source):
+#     def parse(self, token_source: TokenSource):
 #         pass

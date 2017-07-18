@@ -11,9 +11,9 @@ class Token(object):
     which purpose is to make parse work easier.
     """
 
-    def __init__(self, t_type: str, value, cursor: Cursor):
+    def __init__(self, t_type: str, value: str or bool or int, cursor: Cursor):
         self.type: str = t_type
-        self.value: str or bool = value
+        self.value: str or bool or int = value
         self.cursor: Cursor = cursor
 
     def __str__(self):
@@ -31,6 +31,7 @@ class TokenSource(object):
 
     def __init__(self, token_list: List[Token]):
         self.token_list: List[Token] = token_list
+        self.source_len = len(self.token_list)
         self.token_pointer: int = 0
 
     def get(self):
@@ -38,4 +39,6 @@ class TokenSource(object):
         return self.token_list[self.token_pointer - 1]
 
     def peek(self, seq: int=1):
+        if self.token_pointer + seq - 1 >= self.source_len:
+            return Token("EOF", -1, Cursor(-1, -1))
         return self.token_list[self.token_pointer + seq - 1]

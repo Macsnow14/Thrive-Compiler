@@ -32,7 +32,7 @@ class Lexer(object):
         """match literal elements(identifier, keyword, true and false value)"""
         while True:
             next_char: str = self.src.next_char(True)
-            if next_char == ' ' or self.src.is_line_end(next_char) or next_char in delimiters:
+            if next_char == ' ' or self.src.is_line_end(next_char) or next_char in delimiters or next_char in operators:
                 token_literal: str = ''.join(self.read_buffer)
                 if token_literal == 'true':
                     return self.create_token('VAL', True)
@@ -169,3 +169,5 @@ class Lexer(object):
             else:
                 raise InvalidTokenException
             self.read_buffer = []
+
+        return self.token_list

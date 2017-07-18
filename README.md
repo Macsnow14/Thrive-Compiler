@@ -2,36 +2,40 @@
 
 [![Build Status](https://travis-ci.org/Thrimbda/Thrive-Compiler.svg?branch=master)](https://travis-ci.org/Thrimbda/Thrive-Compiler)
 
-A practice of compiler principle.
+compiler for Thrilang.
 
-Also a practice of Python3 language.
+## what is Thrilang?
 
-## REQUIRE
+Basically thrilang a subset of C programming language.
 
-### Var types
+want to know more? see the features list below.
+
+### FEATURE
+
+#### Var types
 
 - int 
 - float
 - bool
 - char
 
-### Value
+#### Value
 
-### Expressions
+#### Expressions
 
-#### Arithmetic expression
+##### Arithmetic expression
 
 `+`, `-`, `*`, `/`, `++`, `--`
 
-#### Relational expression
+##### Relational expression
 
 `<`, `>`, `<=`, `>=`, `==`, `!=`
 
-#### Boolean expression
+##### Boolean expression
 
 `!`, `&&`, `||`
 
-### Statement
+#### Statement
 
 - Assignment
 - Conditional
@@ -43,12 +47,21 @@ Also a practice of Python3 language.
 
 ### basic
 
-- [x] Lexer
+- [x] Lexer for lexical analysis.
 
-- [x] Parser
+- [x] Parser for syntactic analysis and generate concrete syntax tree.
+
+- [ ] transfrom concrete syntax tree to abstract syntax tree.
+
+- [ ] generate quad from AST.
 
 ### enhancement
 
 - [x] Add travis CI uni test.
 
 - [ ] visualize.
+    - [x] concrete syntax tree.
+
+    - [ ] abstract syntax tree.
+
+- [ ] parser generator.

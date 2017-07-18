@@ -1,13 +1,14 @@
-"""test module for parser"""
+"""test module for transform concrete syntax tree to abstract syntax tree."""
 import pytest
 from src.token import TokenSource
 from src.lexer import Lexer
 from src.parser import ParseTranslationUnit
+from src.ast import SourceRoot
 from src.source import FileSource
 
 class TestParser:
     """
-    test parser
+    test transform.
     """
 
     @pytest.fixture(autouse=True)
@@ -18,8 +19,9 @@ class TestParser:
         lexer = Lexer(source)
         lexer.match()
         print(lexer.token_list)
-        self.token_source = TokenSource(lexer.token_list)
+        token_source = TokenSource(lexer.token_list)
+        self.cst = ParseTranslationUnit.parse(token_source)
 
-    def test_parsing(self, test_source_file):
-        cst = ParseTranslationUnit.parse(self.token_source)
-        # print(cst)
+    def test_transform(self):
+        ast = SourceRoot.transform(self.cst)
+        print(ast)

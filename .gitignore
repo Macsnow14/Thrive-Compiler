@@ -90,3 +90,8 @@ ENV/
 
 # visual studio code
 .vscode
+
+# project
+BNF
+*.dot
+*.tl

@@ -2,16 +2,17 @@
 Lexer generate tokens for parsing.
 """
 from typing import List
-from src.token import Token
+from src.token import Token, TokenType
 from src.source import BaseSource
 from src.exceptions import InvalidTokenException
 
 
-token_type = ("KW", "ID", "OP", "DIM", "VAL", "EOF", "INVALID")
-keywords = ("if", "else", "then", "case", "while", "do", "break", "continue", "return", "switch", "default", "int", "float", "char", "bool")
-var_types = ("int", "float", "char", "bool")
-delimiters = (",", ";", ":", "(", ")", "[", "]", "{", "}")
-operators = ("+", "-", "*", "/", "<", "=", ">", "&", "|", "!")
+KEYWORDS = ("if", "else", "case", "while",
+            "do", "break", "continue", "return", "switch",
+            "default", "int", "float", "char", "bool")
+VARTYPES = ("int", "float", "char", "bool")
+DELIMITERS = (",", ";", ":", "(", ")", "[", "]", "{", "}")
+OPERATORS = ("+", "-", "*", "/", "<", "=", ">", "&", "|", "!")
 
 
 class Lexer(object):
@@ -32,16 +33,17 @@ class Lexer(object):
         """match literal elements(identifier, keyword, true and false value)"""
         while True:
             next_char: str = self.src.next_char(True)
-            if next_char == ' ' or self.src.is_line_end(next_char) or next_char in delimiters or next_char in operators:
+            if next_char == ' ' or self.src.is_line_end(next_char) or next_char in DELIMITERS or next_char in OPERATORS:
                 token_literal: str = ''.join(self.read_buffer)
                 if token_literal == 'true':
-                    return self.create_token('VAL', True)
+                    return self.create_token(TokenType.CONST, True)
                 elif token_literal == 'flase':
-                    return self.create_token('VAL', False)
+                    return self.create_token(TokenType.CONST, False)
                 else:
-                    return self.create_token('KW' if token_literal in keywords else 'ID', token_literal)
+                    return self.create_token(TokenType.KEYWORD if token_literal in KEYWORDS else TokenType.IDENTIFIER, token_literal)
             elif not next_char.isalpha() and not next_char.isdigit() and next_char != '_':
-                raise InvalidTokenException("illegal character %s appeared" % next_char)
+                raise InvalidTokenException(
+                    "illegal character %s appeared" % next_char)
             elif next_char == -1:
                 raise InvalidTokenException("unexpected EOF")
             self.read_buffer.append(self.src.next_char())
@@ -56,18 +58,19 @@ class Lexer(object):
             self.read_buffer.append(next_char)
         if next_char == '\'':
             token_literal: str = ''.join(self.read_buffer)
-            return self.create_token('VAL', token_literal)
+            return self.create_token(TokenType.CONST, token_literal)
         else:
-            raise InvalidTokenException("character must be quote in apostrophes.")
+            raise InvalidTokenException(
+                "character must be quote in apostrophes.")
 
     def match_string(self) -> str:
         """match char array elements"""
         self.src.next_char()
         while True:
             next_char: str = self.src.next_char()
-            if next_char =='\"':
+            if next_char == '\"':
                 token_literal: str = ''.join(self.read_buffer)
-                return self.create_token('VAL', token_literal)
+                return self.create_token(TokenType.CONST, token_literal)
             elif self.src.is_line_end(next_char):
                 raise InvalidTokenException("unclosed quote")
             elif next_char == -1:
@@ -80,11 +83,12 @@ class Lexer(object):
             if next_char == '.':
                 self.read_buffer.append(next_char)
                 return self.match_float()
-            elif next_char == ' ' or self.src.is_line_end(next_char) or next_char in delimiters:
+            elif next_char == ' ' or self.src.is_line_end(next_char) or next_char in DELIMITERS:
                 token_literal: str = ''.join(self.read_buffer)
-                return self.create_token('VAL', token_literal)
+                return self.create_token(TokenType.CONST, token_literal)
             elif not next_char.isdigit():
-                raise InvalidTokenException("illegal character %s appeared" % next_char)
+                raise InvalidTokenException(
+                    "illegal character %s appeared" % next_char)
             elif next_char == -1:
                 raise InvalidTokenException("unexpected EOF")
             self.read_buffer.append(self.src.next_char())
@@ -93,11 +97,12 @@ class Lexer(object):
         """match float element"""
         while True:
             next_char = self.src.next_char(True)
-            if next_char == ' ' or self.src.is_line_end(next_char) or next_char in delimiters:
+            if next_char == ' ' or self.src.is_line_end(next_char) or next_char in DELIMITERS:
                 token_literal: str = ''.join(self.read_buffer)
-                return self.create_token('VAL', token_literal)
+                return self.create_token(TokenType.CONST, token_literal)
             elif not next_char.isdigit():
-                raise InvalidTokenException("illegal character %s appeared" % next_char)
+                raise InvalidTokenException(
+                    "illegal character %s appeared" % next_char)
             elif next_char == -1:
                 raise InvalidTokenException("unexpected EOF")
             self.read_buffer.append(self.src.next_char())
@@ -131,7 +136,7 @@ class Lexer(object):
         elif next_char == '|':
             self._peek_next_tk('|')
         token_literal: str = ''.join(self.read_buffer)
-        return self.create_token('OP', token_literal)
+        return self.create_token(TokenType.OPERATOR, token_literal)
 
     def _peek_next_tk(self, token, harsh=False):
         """to see if a token is binocular operator."""
@@ -146,7 +151,7 @@ class Lexer(object):
         next_char = self.src.next_char()
         self.read_buffer.append(next_char)
         token_literal: str = ''.join(self.read_buffer)
-        return self.create_token('DIM', token_literal)
+        return self.create_token(TokenType.DELIMITER, token_literal)
 
     def match(self):
         """match engine"""
@@ -160,9 +165,9 @@ class Lexer(object):
                 self.match_digit()
             elif peek_next_char == '#':
                 self.match_line_comment()
-            elif peek_next_char in operators:
+            elif peek_next_char in OPERATORS:
                 self.match_operator()
-            elif peek_next_char in delimiters:
+            elif peek_next_char in DELIMITERS:
                 self.match_delimiters()
             elif self.src.is_line_end(peek_next_char) or peek_next_char == ' ':
                 self.src.next_char()

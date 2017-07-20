@@ -13,7 +13,15 @@ from .token import Token
 from .exceptions import TransformException
 
 
-class SourceRoot(ParseNode):
+class AbstractSyntaxTreeNode(ParseNode):
+    """base class node for AST with method for visitor"""
+
+    def accept(self, visitor):
+        """accept method for different visitor"""
+        visitor.semantic_analyse(self)
+
+
+class SourceRoot(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, cst_node):
@@ -28,7 +36,7 @@ class SourceRoot(ParseNode):
         return ast_node
 
 
-class ExternalDecl(ParseNode):
+class ExternalDecl(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, cst_node):
@@ -42,7 +50,7 @@ class ExternalDecl(ParseNode):
         return ast_node
 
 
-class InitDeclaratorList(ParseNode):
+class InitDeclaratorList(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, type_spec, cst_node):
@@ -56,7 +64,7 @@ class InitDeclaratorList(ParseNode):
         return ast_node
 
 
-class InitDeclarator(ParseNode):
+class InitDeclarator(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, cst_node):
@@ -69,7 +77,7 @@ class InitDeclarator(ParseNode):
             return VarDeclarator.transform(cst_node.child[0])
 
 
-class Initializer(ParseNode):
+class Initializer(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, cst_node):
@@ -79,14 +87,14 @@ class Initializer(ParseNode):
             return AsignmentExp.transform(cst_node.child[0])
 
 
-# class InitializerList(ParseNode):
+# class InitializerList(AbstractSyntaxTreeNode):
 
 #     @classmethod
 #     def transform(cls, cst_node):
 #         pass
 
 
-class VarDeclarator(ParseNode):
+class VarDeclarator(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, cst_node):
@@ -113,7 +121,7 @@ class VarDeclarator(ParseNode):
             return cls(cst_node.child[0].symbol)
 
 
-class FunctionDefinition(ParseNode):
+class FunctionDefinition(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, type_spec, cst_node):
@@ -126,7 +134,7 @@ class FunctionDefinition(ParseNode):
         return ast_node
 
 
-class ParamList(ParseNode):
+class ParamList(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, cst_node):
@@ -139,7 +147,7 @@ class ParamList(ParseNode):
         return ast_node
 
 
-class ParamDecl(ParseNode):
+class ParamDecl(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, cst_node):
@@ -151,7 +159,7 @@ class ParamDecl(ParseNode):
         return ast_node
 
 
-class CompoundStat(ParseNode):
+class CompoundStat(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, cst_node):
@@ -166,7 +174,7 @@ class CompoundStat(ParseNode):
         return ast_node
 
 
-class LocalDeclList(ParseNode):
+class LocalDeclList(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, cst_node):
@@ -178,7 +186,7 @@ class LocalDeclList(ParseNode):
         return ast_node
 
 
-class StatList(ParseNode):
+class StatList(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, cst_node):
@@ -190,7 +198,7 @@ class StatList(ParseNode):
         return ast_node
 
 
-class Statement(ParseNode):
+class Statement(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, cst_node):
@@ -208,7 +216,7 @@ class Statement(ParseNode):
             return JumpStat.transform(cst_node.child[0])
 
 
-class LabeledStat(ParseNode):
+class LabeledStat(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, cst_node):
@@ -225,7 +233,7 @@ class LabeledStat(ParseNode):
         return ast_node
 
 
-class ExpStat(ParseNode):
+class ExpStat(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, cst_node):
@@ -237,7 +245,7 @@ class ExpStat(ParseNode):
         return ast_node
 
 
-class SelectionStat(ParseNode):
+class SelectionStat(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, cst_node):
@@ -263,7 +271,7 @@ class SelectionStat(ParseNode):
         return ast_node
 
 
-class IterationStat(ParseNode):
+class IterationStat(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, cst_node):
@@ -282,7 +290,7 @@ class IterationStat(ParseNode):
         return ast_node
 
 
-class JumpStat(ParseNode):
+class JumpStat(AbstractSyntaxTreeNode):
 
     # TODO: Do I need check if there are semantic error.
     @classmethod
@@ -294,7 +302,7 @@ class JumpStat(ParseNode):
         return ast_node
 
 
-class Expression(ParseNode):
+class Expression(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, cst_node):
@@ -310,7 +318,7 @@ class Expression(ParseNode):
         return ast_node
 
 
-class AsignmentExp(ParseNode):
+class AsignmentExp(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, cst_node):
@@ -333,7 +341,7 @@ class AsignmentExp(ParseNode):
         return ast_node
 
 
-class LogicalOrExp(ParseNode):
+class LogicalOrExp(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, cst_node):
@@ -349,7 +357,7 @@ class LogicalOrExp(ParseNode):
         return ast_node
 
 
-class LogicalAndExp(ParseNode):
+class LogicalAndExp(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, cst_node):
@@ -365,7 +373,7 @@ class LogicalAndExp(ParseNode):
         return ast_node
 
 
-class EqualityExp(ParseNode):
+class EqualityExp(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, cst_node):
@@ -381,7 +389,7 @@ class EqualityExp(ParseNode):
         return ast_node
 
 
-class RelationalExp(ParseNode):
+class RelationalExp(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, cst_node):
@@ -397,7 +405,7 @@ class RelationalExp(ParseNode):
         return ast_node
 
 
-class AdditiveExp(ParseNode):
+class AdditiveExp(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, cst_node):
@@ -413,7 +421,7 @@ class AdditiveExp(ParseNode):
         return ast_node
 
 
-class MultExp(ParseNode):
+class MultExp(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, cst_node):
@@ -429,7 +437,7 @@ class MultExp(ParseNode):
         return ast_node
 
 
-class CastExp(ParseNode):
+class CastExp(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, cst_node):
@@ -444,7 +452,7 @@ class CastExp(ParseNode):
             return UnaryExp.transform(cst_node.child[0])
 
 
-class UnaryExp(ParseNode):
+class UnaryExp(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, cst_node):
@@ -467,7 +475,7 @@ class UnaryExp(ParseNode):
         return ast_node
 
 
-class PostfixExp(ParseNode):
+class PostfixExp(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, cst_node):
@@ -495,7 +503,7 @@ class PostfixExp(ParseNode):
             return PrimaryExp.transform(cst_node.child[0])
 
 
-class PrimaryExp(ParseNode):
+class PrimaryExp(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, cst_node):
@@ -504,7 +512,7 @@ class PrimaryExp(ParseNode):
         else:
             return cls(cst_node.symbol)
 
-class ArgumentExpList(ParseNode):
+class ArgumentExpList(AbstractSyntaxTreeNode):
 
     @classmethod
     def transform(cls, cst_node):

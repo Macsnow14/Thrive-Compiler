@@ -18,7 +18,7 @@ class AbstractSyntaxTreeNode(ParseNode):
 
     def accept(self, visitor):
         """accept method for different visitor"""
-        visitor.semantic_analyse(self)
+        visitor.semantic_analyze(self)
 
 
 class SourceRoot(AbstractSyntaxTreeNode):
@@ -154,7 +154,7 @@ class ParamDecl(AbstractSyntaxTreeNode):
         ast_node = cls("param decl")
 
         for node in cst_node.child:
-            ast_node.child.append(node)
+            ast_node.child.append(VarDeclarator.transform(node))
 
         return ast_node
 

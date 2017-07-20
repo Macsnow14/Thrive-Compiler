@@ -2,6 +2,7 @@
 this module contains the util class for symbol table.
 """
 from typing import Dict, Tuple
+from functools import reduce
 
 
 class SymbolTable(object):
@@ -21,8 +22,7 @@ class SymbolTable(object):
         self._symbol_table[name] = {
             "addr": self._addr, "type": value_type, "scope": scope}
         if array:
-            size: int = None
-            # TODO: complete this one
+            size: int = reduce(lambda curr, last: curr * last, array)
             self._symbol_table[name]["size"] = size
             self._addr += size
         else:

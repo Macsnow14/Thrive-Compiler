@@ -285,7 +285,7 @@ class ParseDeclarator(ParseNode):
             while token_source.peek(1).value in ('[', '('):
                 if token_source.peek(1).value == '[':
                     node.child.append(ParseToken.parse(token_source))
-                    if token_source.peek(1).type in (TokenType.IDENTIFIER, TokenType.CONST) or token_source.peek(1).value in ('(', '+', '-', '!', '++', '--'):
+                    if token_source.peek(1).type in (TokenType.IDENTIFIER, TokenType.BOOL_CONST, TokenType.CHAR_CONST, TokenType.INT_CONST, TokenType.FLOAT_CONST) or token_source.peek(1).value in ('(', '+', '-', '!', '++', '--'):
                         node.child.append(
                             ParseLogicalOrExp.parse(token_source))
                     if token_source.peek(1).value == ']':
@@ -483,7 +483,7 @@ class ParseStatement(ParseNode):
 
     @staticmethod
     def is_exp_stat(token_source):
-        return token_source.peek(1).type in (TokenType.IDENTIFIER, TokenType.CONST) or token_source.peek(1).value in ('(', '+', '-', '!', '++', '--', ';')
+        return token_source.peek(1).type in (TokenType.IDENTIFIER, TokenType.BOOL_CONST, TokenType.CHAR_CONST, TokenType.INT_CONST, TokenType.FLOAT_CONST) or token_source.peek(1).value in ('(', '+', '-', '!', '++', '--', ';')
 
     @staticmethod
     def is_compound_stat(token_source):
@@ -594,7 +594,7 @@ class ParseExpStat(ParseNode):
         """parse token source to recursively construct a node."""
         node = cls("expression statement")
 
-        if token_source.peek(1).type in (TokenType.IDENTIFIER, TokenType.CONST) or token_source.peek(1).value in ('(', '+', '-', '!', '++', '--'):
+        if token_source.peek(1).type in (TokenType.IDENTIFIER, TokenType.BOOL_CONST, TokenType.CHAR_CONST, TokenType.INT_CONST, TokenType.FLOAT_CONST) or token_source.peek(1).value in ('(', '+', '-', '!', '++', '--'):
             node.child.append(ParseExpression.parse(token_source))
         if token_source.peek(1).value == ';':
             node.child.append(ParseToken.parse(token_source))
@@ -824,7 +824,7 @@ class ParseJumpStat(ParseNode):
                                      (token_source.peek(1).cursor))
         elif token_source.peek(1).value == 'return':
             node.child.append(ParseToken.parse(token_source))
-            if token_source.peek(1).type in (TokenType.IDENTIFIER, TokenType.CONST) or token_source.peek(1).value in ('(', '+', '-', '!', '++', '--'):
+            if token_source.peek(1).type in (TokenType.IDENTIFIER, TokenType.BOOL_CONST, TokenType.CHAR_CONST, TokenType.INT_CONST, TokenType.FLOAT_CONST) or token_source.peek(1).value in ('(', '+', '-', '!', '++', '--'):
                 node.child.append(ParseExpression.parse(token_source))
             if token_source.peek(1).value == ';':
                 node.child.append(ParseToken.parse(token_source))
@@ -878,7 +878,7 @@ class ParseAssignmentExp(ParseNode):
         """parse token source to recursively construct a node."""
         node = cls("assignment expression")
 
-        while (token_source.peek(1).type in (TokenType.IDENTIFIER, TokenType.CONST) or token_source.peek(1).value in ('(', '+', '-', '!', '++', '--')) and token_source.peek(2).value in ('=', '*=', '/=', '+=', '-='):
+        while (token_source.peek(1).type in (TokenType.IDENTIFIER, TokenType.BOOL_CONST, TokenType.CHAR_CONST, TokenType.INT_CONST, TokenType.FLOAT_CONST) or token_source.peek(1).value in ('(', '+', '-', '!', '++', '--')) and token_source.peek(2).value in ('=', '*=', '/=', '+=', '-='):
             node.child.append(ParseUnaryExp.parse(token_source))
             node.child.append(ParseAssignmentOperator.parse(token_source))
         node.child.append(ParseLogicalOrExp.parse(token_source))
@@ -1121,7 +1121,7 @@ class ParseUnaryExp(ParseNode):
 
         while token_source.peek(1).value in ('++', '--'):
             node.child.append(ParseToken.parse(token_source))
-        if token_source.peek(1).type in (TokenType.IDENTIFIER, TokenType.CONST) or token_source.peek(1).value == '(':
+        if token_source.peek(1).type in (TokenType.IDENTIFIER, TokenType.BOOL_CONST, TokenType.CHAR_CONST, TokenType.INT_CONST, TokenType.FLOAT_CONST) or token_source.peek(1).value == '(':
             node.child.append(ParsePostfixExp.parse(token_source))
         elif token_source.peek(1).value in ('+', '-', '!'):
             node.child.append(ParseUnaryOperator.parse(token_source))
@@ -1188,7 +1188,7 @@ class ParsePostfixExp(ParseNode):
                     token_source.peek(1).cursor))
         elif token_source.peek(1).value == '(':
             node.child.append(ParseToken.parse(token_source))
-            if token_source.peek(1).type in (TokenType.IDENTIFIER, TokenType.CONST) or token_source.peek(1).value in ('+', '-', '!', '(', '++', '--'):
+            if token_source.peek(1).type in (TokenType.IDENTIFIER, TokenType.BOOL_CONST, TokenType.CHAR_CONST, TokenType.INT_CONST, TokenType.FLOAT_CONST) or token_source.peek(1).value in ('+', '-', '!', '(', '++', '--'):
                 node.child.append(ParseArgumentExpList.parse(token_source))
             if token_source.peek(1).value == ')':
                 node.child.append(ParseToken.parse(token_source))
@@ -1223,7 +1223,7 @@ class ParsePrimaryExp(ParseNode):
     @classmethod
     def parse(cls, token_source: TokenSource):
         """parse token source to recursively construct a node."""
-        if token_source.peek(1).type in (TokenType.IDENTIFIER, TokenType.CONST):
+        if token_source.peek(1).type in (TokenType.IDENTIFIER, TokenType.BOOL_CONST, TokenType.CHAR_CONST, TokenType.INT_CONST, TokenType.FLOAT_CONST):
             return cls(token_source.get())
         elif token_source.peek(1).value == '(':
             node = cls("bracket expression")

@@ -2,6 +2,7 @@
 this is a tool set for source code process.
 """
 from typing import Tuple, List, IO
+# TODO: replace all -1 with EOF
 
 
 class Cursor(object):

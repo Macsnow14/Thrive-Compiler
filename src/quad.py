@@ -2,6 +2,8 @@
 travel AST and generate quad, contians several visitor.
 """
 import src.ast as ast
+from symbol_table import SymbolTable
+from src.token import TokenType
 
 
 class ASTVisitor(object):
@@ -9,10 +11,16 @@ class ASTVisitor(object):
 
     def semantic_analyze(self, ast_node: ast.AbstractSyntaxTreeNode):
         """double dispatch method"""
-        if isinstance(ast_node, ast.InitDeclaratorList):
+        if isinstance(ast_node, ast.SourceRoot):
+            self._init_declarator_list(ast_node)
+        elif isinstance(ast_node, ast.ExternalDecl):
+            self._init_declarator_list(ast_node)
+        elif isinstance(ast_node, ast.InitDeclaratorList):
             self._init_declarator_list(ast_node)
         elif isinstance(ast_node, ast.InitDeclarator):
             self._init_declarator(ast_node)
+        elif isinstance(ast_node, ast.VarDeclarator):
+            self._var_declarator(ast_node)
         elif isinstance(ast_node, ast.Initializer):
             self._initializer(ast_node)
         elif isinstance(ast_node, ast.FunctionDefinition):
@@ -55,11 +63,22 @@ class ASTVisitor(object):
             self._postfix_exp(ast_node)
         elif isinstance(ast_node, ast.PrimaryExp):
             self._primary_exp(ast_node)
+        else:
+            pass
+
+    def _source_root(self, ast_node: ast.AbstractSyntaxTreeNode):
+        raise NotImplementedError
+
+    def _external_decl(self, ast_node: ast.AbstractSyntaxTreeNode):
+        raise NotImplementedError
 
     def _init_declarator_list(self, ast_node: ast.AbstractSyntaxTreeNode):
         raise NotImplementedError
 
     def _init_declarator(self, ast_node: ast.AbstractSyntaxTreeNode):
+        raise NotImplementedError
+
+    def _var_declarator(self, ast_node: ast.AbstractSyntaxTreeNode):
         raise NotImplementedError
 
     def _initializer(self, ast_node: ast.AbstractSyntaxTreeNode):
@@ -133,3 +152,82 @@ class ASTVisitor(object):
 
     def _primary_exp(self, ast_node: ast.AbstractSyntaxTreeNode):
         raise NotImplementedError
+
+
+class AttrCalculateVisitor(ASTVisitor):
+    """visitor for calculate attribute"""
+
+    def __init__(self, symbol_table: SymbolTable):
+        self.symbol_table: SymbolTable = symbol_table
+
+    def _source_root(self, ast_node):
+        ast_node.scope = "global"
+        for external_decl in ast_node.child:
+            external_decl.accept(self)
+
+    def _external_decl(self, ast_node):
+        ast_node.scope = ast_node.father_node.scope
+        ast.child[0].accept(self)
+
+    def _init_declarator_list(self, ast_node):
+        var_type = ast_node.child[0].symbol.value
+        ast_node.type = var_type
+        ast_node.scope = ast_node.father_node.scope
+        for init_declarator in ast_node.child[1:]:
+            init_declarator.accept(self)
+
+    def _init_declarator(self, ast_node):
+        ast_node.type = ast_node.father_node.type
+        ast_node.scope = ast_node.father_node.scope
+        for child in ast_node.child:
+            child.accept(self)
+        ast_node.value = ast_node.child[1].value
+
+    def _var_declarator(self, ast_node):
+        ast_node.type = ast_node.father_node.type
+        ast_node.scope = ast_node.father_node.scope
+        if ast_node.child:
+            ast_node.child[1].accept(self)
+            ast_node.array_dimension = (ast_node.child[0], ) + ast_node.child[1].array_dimension
+        else:
+            self.symbol_table.create_item(ast_node.symbol.value, ast_node.type, ast_node.scope)
+        # TODO: finish this.
+    def _initializer(self, ast_node):
+        pass
+
+
+class TypeCheckingVisitor(ASTVisitor):
+    """visitor for check type"""
+
+    def __init__(self, symbol_table: SymbolTable):
+        self.symbol_table: SymbolTable = symbol_table
+
+    # def type_check(self, var_type):
+    #     """return enum value of var type"""
+    #     if var_type == "int":
+    #         return TokenType.INT_CONST
+
+    # def _init_declarator_list(self, ast_node):
+    #     var_type = ast_node.child[0].symbol.value
+    #     for init_declarator in ast_node.child[1:]:
+    #         if init_declarator.child:
+    # TODO: implement type check.
+
+
+class QuadGeneratingVisitor(ASTVisitor):
+    """visitor for generate quad"""
+
+    def __init__(self, symbol_table: SymbolTable):
+        self.symbol_table: SymbolTable = symbol_table
+
+    def _init_declarator_list(self, ast_node):
+        var_type = ast_node.child[0].symbol.value
+        ast_node.type = var_type
+
+    def _init_declarator(self, ast_node):
+        ast_node.type = ast_node.father_node.type
+
+    def _var_declarator(self, ast_node):
+        ast_node.type = ast_node.father_node.type
+        self.symbol_table.create_item(ast_node.symbol.value)
+

@@ -11,7 +11,11 @@ class TokenType(Enum):
     IDENTIFIER = auto()
     OPERATOR = auto()
     DELIMITER = auto()
-    CONST = auto()
+    STRING = auto()
+    CHAR_CONST = auto()
+    INT_CONST = auto()
+    FLOAT_CONST = auto()
+    BOOL_CONST = auto()
     EOF = -1
 
 

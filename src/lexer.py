@@ -36,9 +36,9 @@ class Lexer(object):
             if next_char == ' ' or self.src.is_line_end(next_char) or next_char in DELIMITERS or next_char in OPERATORS:
                 token_literal: str = ''.join(self.read_buffer)
                 if token_literal == 'true':
-                    return self.create_token(TokenType.CONST, True)
+                    return self.create_token(TokenType.BOOL_CONST, True)
                 elif token_literal == 'flase':
-                    return self.create_token(TokenType.CONST, False)
+                    return self.create_token(TokenType.BOOL_CONST, False)
                 else:
                     return self.create_token(TokenType.KEYWORD if token_literal in KEYWORDS else TokenType.IDENTIFIER, token_literal)
             elif not next_char.isalpha() and not next_char.isdigit() and next_char != '_':
@@ -58,7 +58,7 @@ class Lexer(object):
             self.read_buffer.append(next_char)
         if next_char == '\'':
             token_literal: str = ''.join(self.read_buffer)
-            return self.create_token(TokenType.CONST, token_literal)
+            return self.create_token(TokenType.CHAR_CONST, token_literal)
         else:
             raise InvalidTokenException(
                 "character must be quote in apostrophes.")
@@ -70,7 +70,7 @@ class Lexer(object):
             next_char: str = self.src.next_char()
             if next_char == '\"':
                 token_literal: str = ''.join(self.read_buffer)
-                return self.create_token(TokenType.CONST, token_literal)
+                return self.create_token(TokenType.STRING_CONST, token_literal)
             elif self.src.is_line_end(next_char):
                 raise InvalidTokenException("unclosed quote")
             elif next_char == -1:
@@ -85,7 +85,7 @@ class Lexer(object):
                 return self.match_float()
             elif next_char == ' ' or self.src.is_line_end(next_char) or next_char in DELIMITERS:
                 token_literal: str = ''.join(self.read_buffer)
-                return self.create_token(TokenType.CONST, token_literal)
+                return self.create_token(TokenType.INT_CONST, token_literal)
             elif not next_char.isdigit():
                 raise InvalidTokenException(
                     "illegal character %s appeared" % next_char)
@@ -99,7 +99,7 @@ class Lexer(object):
             next_char = self.src.next_char(True)
             if next_char == ' ' or self.src.is_line_end(next_char) or next_char in DELIMITERS:
                 token_literal: str = ''.join(self.read_buffer)
-                return self.create_token(TokenType.CONST, token_literal)
+                return self.create_token(TokenType.FLOAT_CONST, token_literal)
             elif not next_char.isdigit():
                 raise InvalidTokenException(
                     "illegal character %s appeared" % next_char)

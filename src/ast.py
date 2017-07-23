@@ -159,7 +159,8 @@ class ParamDecl(AbstractSyntaxTreeNode):
     def transform(cls, cst_node, father_node):
         ast_node = cls("param decl", father_node)
 
-        for node in cst_node.child:
+        ast_node.child.append(cst_node.child[0])
+        for node in cst_node.child[1:]:
             ast_node.child.append(VarDeclarator.transform(node, ast_node))
 
         return ast_node

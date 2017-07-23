@@ -21,11 +21,25 @@ grammar_str = ('E -> TR',
 non_terminators = ('E', 'T', 'R')
 terminators = ('i', 'n', '(', ')', '+', '-')
 
-source_str = """# Default Sample
+source_str = ["""# recursive factorial calculation
+int b;
+
+int fact(int a) {
+    if(a == 0){
+        return 1;
+    }
+    return a * fact(a - 1);
+}
+
+int main() {
+    b = fact(10);
+}
+""", """# Default Sample
 # Feel free to explore the World of thrilang.
 int main () {
   # Declare an matrix of matrix
-  float a[2][2][2][2];
+  float b[2];
+  float a[b[1]][2][2][2];
   int i = 0, j = 100;
   bool test = true;
   while (i < j || test) {
@@ -36,6 +50,9 @@ int main () {
     }
   }
 }
-
 int c;
-"""
+""", """int a1;
+int main() {
+    a1 = 10
+}
+"""]

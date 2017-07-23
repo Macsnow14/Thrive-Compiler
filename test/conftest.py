@@ -28,13 +28,13 @@ def test_grammar(request):
 def test_source_file(request):
     file_name = "test.tl"
     with open(file_name, 'w') as file_obj:
-        file_obj.write(source_str)
-    def teardown():
-        os.remove(file_name)
-    request.addfinalizer(teardown)
+        file_obj.write(source_str[1])
+    # def teardown():
+    #     os.remove(file_name)
+    # request.addfinalizer(teardown)
 
     return file_name
 
 @pytest.fixture()
 def test_source_string():
-    return source_str
+    return source_str[0]

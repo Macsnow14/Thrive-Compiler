@@ -1,7 +1,22 @@
 """Define some meta component of lexer.
 """
 from typing import List
+from enum import Enum, auto
 from src.source import Cursor
+
+
+class TokenType(Enum):
+    """types of token"""
+    KEYWORD = auto()
+    IDENTIFIER = auto()
+    OPERATOR = auto()
+    DELIMITER = auto()
+    STRING = auto()
+    CHAR_CONST = auto()
+    INT_CONST = auto()
+    FLOAT_CONST = auto()
+    BOOL_CONST = auto()
+    EOF = -1
 
 
 class Token(object):

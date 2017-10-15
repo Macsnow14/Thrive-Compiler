@@ -64,4 +64,6 @@ want to know more? see the features list below.
 
     - [x] abstract syntax tree.
 
-- [ ] parser generator.
+    - [ ] CLI to do these works.
+
+- [ ] A LIVE DEMO.
